@@ -1,0 +1,12 @@
+flask
+flask-cors
+numpy
+scipy
+scikit-learn
+xgboost
+imbalanced-learn
+joblib
+mne
+mne-features
+pandas
+xlrd

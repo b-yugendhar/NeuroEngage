@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EEG Stress Classifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    .chart-container { padding: 16px 20px; height: 380px; position: relative; }
+    .toast {
+      position: fixed; bottom: 32px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a1a1a; border: 1px solid rgba(255,255,255,0.15);
+      color: #fff; padding: 12px 28px; border-radius: 8px;
+      font-size: 0.88rem; transition: transform 0.3s ease, opacity 0.3s ease;
+      opacity: 0; z-index: 9999; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header class="header">
+    <div class="header-text">
+      <h1>EEG Stress Classifier</h1>
+    </div>
+    <select class="select-input" id="modelSelect">
+      <option value="SVM">SVM</option>
+      <option value="Random Forest">Random Forest</option>
+      <option value="KNN">KNN</option>
+      <option value="MLP">MLP</option>
+      <option value="XGBoost">XGBoost</option>
+      <option value="CNN-LSTM">CNN-LSTM</option>
+    </select>
+  </header>
+
+  <div class="main-grid">
+
+    <div class="panel">
+      <div class="panel-header">
+        <h2>EEG Waveform Monitor</h2>
+        <div class="panel-controls">
+          <select class="select-input" id="channelFilter">
+            <option value="all">All Channels</option>
+          </select>
+          <button class="btn btn-primary" id="loadBtn">Load Sample</button>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="eegChart"></canvas>
+      </div>
+      <div class="sample-info" id="sampleInfo">
+        <span>Click Load Sample to begin</span>
+      </div>
+    </div>
+
+    <div class="panel prediction-panel">
+      <div class="panel-header">
+        <h2>Prediction Result</h2>
+      </div>
+      <div class="prediction-content" id="predictionContent">
+        <div style="text-align:center;color:var(--text-muted);font-size:0.85rem;padding:2rem;">
+          Load a sample and classify to see results
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn btn-accent btn-large" id="classifyBtn" disabled>
+          Classify EEG Signal
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const COLORS = ['#a78bfa','#6ee7b7','#34d399','#fbbf24','#f87171','#60a5fa','#f472b6','#a3e635'];
+
+let chart           = null;
+let waveformData    = {};
+let channelNames    = [];
+let displayBuffers  = {};
+let animationFrame  = null;
+let animationOffset = 0;
+let isAnimating     = false;
+let lastFrameTime   = 0;
+let currentSample   = null;
+const targetFPS     = 30;
+
+function showToast(msg, ms = 3200) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function initChart() {
+  if (chart) chart.destroy();
+  const ctx    = document.getElementById('eegChart').getContext('2d');
+  const labels = Array.from({length: 256}, (_, i) => (i / 128).toFixed(2));
+
+  displayBuffers = {};
+  const datasets = channelNames.map((name, idx) => {
+    displayBuffers[name] = new Array(256).fill(0);
+    return {
+      label:       name,
+      data:        displayBuffers[name],
+      borderColor: COLORS[idx % COLORS.length],
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension:     0.4,
+      fill:        false
+    };
+  });
+
+  chart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      animation:           false,
+      responsive:          true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            color:         '#aaa',
+            font:          { size: 11 },
+            usePointStyle: true,
+            pointStyle:    'line',
+            boxWidth:      30
+          }
+        },
+        tooltip: { enabled: false }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#666', maxTicksLimit: 10, font: { size: 10 } },
+          grid:  { color: 'rgba(255,255,255,0.04)' },
+          title: { display: true, text: 'Time (s)', color: '#666', font: { size: 11 } }
+        },
+        y: {
+          min:   -1,
+          max:    1,
+          ticks: { color: '#666' },
+          grid:  { color: 'rgba(255,255,255,0.04)' },
+          title: { display: true, text: 'Amplitude (μV)', color: '#666', font: { size: 11 } }
+        }
+      }
+    }
+  });
+}
+
+function startAnimation() {
+  isAnimating     = true;
+  animationOffset = 0;
+  if (animationFrame) cancelAnimationFrame(animationFrame);
+  animationFrame = requestAnimationFrame(animateWaveform);
+}
+
+function animateWaveform(timestamp) {
+  if (!isAnimating || !chart) return;
+  if (timestamp - lastFrameTime < 1000 / targetFPS) {
+    animationFrame = requestAnimationFrame(animateWaveform);
+    return;
+  }
+  lastFrameTime = timestamp;
+
+  channelNames.forEach((name, idx) => {
+    const fullData = waveformData[name] || [];
+    if (!fullData.length) return;
+    displayBuffers[name].shift();
+    displayBuffers[name].push(fullData[animationOffset % fullData.length]);
+    chart.data.datasets[idx].data = displayBuffers[name];
+  });
+
+  chart.update('none');
+  animationOffset++;
+  animationFrame = requestAnimationFrame(animateWaveform);
+}
+
+// ── Load Sample ───────────────────────────────────────────────────────────────
+document.getElementById('loadBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('loadBtn');
+  btn.disabled    = true;
+  btn.textContent = 'Loading...';
+
+  const res  = await fetch('/api/sample');
+  const data = await res.json();
+  currentSample = data;
+
+  waveformData = data.waveforms;
+  channelNames = data.channel_names;
+
+  const gt    = data.true_label_text.toUpperCase();
+  const gtCls = data.true_label === 1 ? 'stressed' : 'relaxed';
+  document.getElementById('sampleInfo').innerHTML =
+    `<span>Sample #${data.sid}</span>
+     <span class="separator">|</span>
+     <span>Ground Truth: <span class="label-badge ${gtCls}">${gt}</span></span>
+     <span class="separator">|</span>
+     <span>Features: ${data.n_total_features}</span>`;
+
+  const select = document.getElementById('channelFilter');
+  select.innerHTML = '<option value="all">All Channels</option>';
+  channelNames.forEach(n => {
+    const o = document.createElement('option');
+    o.value = n; o.textContent = n;
+    select.appendChild(o);
+  });
+
+  initChart();
+  startAnimation();
+
+  document.getElementById('classifyBtn').disabled = false;
+  document.getElementById('predictionContent').innerHTML =
+    `<div style="text-align:center;color:var(--text-muted);font-size:0.85rem;padding:2rem;">
+      Sample loaded. Click Classify EEG Signal.
+    </div>`;
+
+  btn.disabled    = false;
+  btn.textContent = 'Load Sample';
+});
+
+// ── Channel filter ────────────────────────────────────────────────────────────
+document.getElementById('channelFilter').addEventListener('change', function () {
+  if (!chart) return;
+  const val = this.value;
+  chart.data.datasets.forEach(ds => {
+    ds.hidden = val !== 'all' && ds.label !== val;
+  });
+  chart.update();
+});
+
+// ── Classify ──────────────────────────────────────────────────────────────────
+document.getElementById('classifyBtn').addEventListener('click', async () => {
+  if (!currentSample) return;
+
+  const model = document.getElementById('modelSelect').value;
+  const btn   = document.getElementById('classifyBtn');
+  btn.disabled    = true;
+  btn.textContent = 'Classifying...';
+
+  try {
+    const res = await fetch('/api/predict', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        subject: currentSample.subject,
+        trial:   currentSample.trial,
+        epoch:   currentSample.epoch,
+        model:   model
+      })
+    });
+
+    const d = await res.json();
+
+    if (d.error) {
+      showToast(d.error);
+      btn.disabled    = false;
+      btn.textContent = 'Classify EEG Signal';
+      return;
+    }
+
+    const cls       = d.prediction === 1 ? 'stressed' : 'relaxed';
+    const gtCls     = d.true_label  === 1 ? 'stressed' : 'relaxed';
+    const matchHtml = d.correct
+      ? '<span class="match-badge correct">Correct</span>'
+      : '<span class="match-badge incorrect">Incorrect</span>';
+
+    document.getElementById('predictionContent').innerHTML = `
+      <div class="prediction-result">
+        <div class="result-indicator ${cls}">
+          <div class="result-label">${d.prediction_text.toUpperCase()}</div>
+        </div>
+        <div class="confidence-bar-container">
+          <div class="confidence-label">Confidence</div>
+          <div class="confidence-bar">
+            <div class="confidence-fill ${cls}" style="width:${d.confidence}%"></div>
+          </div>
+          <div class="confidence-value">${d.confidence}%</div>
+        </div>
+        <div class="result-details">
+          <div class="detail-row">
+            <span>Prediction</span>
+            <span class="label-badge ${cls}">${d.prediction_text.toUpperCase()}</span>
+          </div>
+          <div class="detail-row">
+            <span>Ground Truth</span>
+            <span class="label-badge ${gtCls}">${d.true_label_text.toUpperCase()}</span>
+          </div>
+          <div class="detail-row">
+            <span>Match</span>
+            ${matchHtml}
+          </div>
+        </div>
+      </div>`;
+
+  } catch (err) {
+    showToast('Server error — check console');
+  }
+
+  btn.disabled    = false;
+  btn.textContent = 'Classify EEG Signal';
+});
+</script>
+</body>
+</html>
