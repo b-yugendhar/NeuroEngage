@@ -1,0 +1,23 @@
+﻿
+> neuro-engage@0.0.0 lint
+> eslint .
+
+
+E:\projects_placements\neuro-engage\src\pages\Analysis.tsx
+  13:10   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  14:12   error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:131  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:147  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+E:\projects_placements\neuro-engage\src\pages\Dashboard.tsx
+  13:44  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+E:\projects_placements\neuro-engage\src\pages\LiveEEG.tsx
+  215:26  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  218:42  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+E:\projects_placements\neuro-engage\src\pages\Students.tsx
+  27:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Γ£û 8 problems (8 errors, 0 warnings)
+

@@ -1,29 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
 :root {
-  /* Deep Dark Base Tones (matching Login) */
-  --bg-base: #08080f;
-  --bg-surface: #0a0a14;
-  --bg-surface-elevated: #0f0f1a;
+  /* Smooth Light Base Tones */
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f1f5f9;
   
-  /* Indigo-Purple Accent System */
-  --brand-primary: #6366f1;
-  --brand-secondary: #a1a1aa;
-  --brand-accent: #8b5cf6;
+  /* Indigo-Purple Accent System (Adjusted for Light) */
+  --brand-primary: #4f46e5;
+  --brand-secondary: #64748b;
+  --brand-accent: #7c3aed;
   
-  --text-primary: #ffffff;
-  --text-secondary: #a1a1aa;
-  --text-muted: #52525b;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
   
-  /* Status Colors */
-  --status-stress: #fca5a5; 
-  --status-calm: #86efac; 
-  --status-neutral: #93c5fd; 
-  --status-anxious: #fde047; 
+  /* Status Colors (Adjusted for Light) */
+  --status-stress: #ef4444; 
+  --status-calm: #10b981; 
+  --status-neutral: #3b82f6; 
+  --status-anxious: #eab308; 
   
-  /* Borders — subtle glass edges */
-  --border-subtle: rgba(255,255,255,0.08);
-  --border-highlight: rgba(255,255,255,0.14);
+  /* Borders — subtle light edges */
+  --border-subtle: rgba(0,0,0,0.06);
+  --border-highlight: rgba(0,0,0,0.1);
   
   /* Radii */
   --radius-sm: 0.375rem;
@@ -74,19 +74,19 @@ a:hover {
   color: var(--brand-secondary);
 }
 
-/* Glassmorphism Cards (matching Login) */
+/* Glassmorphism Cards (Adjusted for Light) */
 .glass-panel, .glass-card {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.7);
+  border: 1px solid rgba(0,0,0,0.05);
   border-radius: var(--radius-lg);
   backdrop-filter: blur(12px);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .glass-card:hover {
-  border-color: rgba(255,255,255,0.14);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  border-color: rgba(0,0,0,0.1);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.1);
 }
 
 /* Gradient Text */

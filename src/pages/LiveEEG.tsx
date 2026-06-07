@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, Button } from '../components/UI';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity, Target, Brain, Radio, CheckCircle2, Play, ArrowRight, BatteryMedium, BrainCircuit, WifiOff, Monitor } from 'lucide-react';
+import { Activity, Target, Brain, Radio, CheckCircle2, Play, ArrowRight, BatteryMedium, BrainCircuit, Monitor, Loader, Signal, AlertCircle, Wifi } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+interface BluetoothNavigator extends Navigator {
+  bluetooth: {
+    requestDevice(options?: unknown): Promise<unknown>;
+  };
+}
 
 const COGNITIVE_TESTS: Record<string, { q: string, options: string[] }[]> = {
   "Logical Math": [
@@ -124,7 +130,7 @@ const QuizSidebar = ({ selectedTest, quizIndex, setQuizIndex, onSelectTest }: { 
         <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 font-medium">Q {quizIndex + 1} / {activeQuizArray.length}</span>
       </div>
       
-      <p className="text-lg font-semibold text-white leading-relaxed mb-8">{q.q}</p>
+      <p className="text-lg font-semibold text-black leading-relaxed mb-8">{q.q}</p>
       
       <div className="flex flex-col gap-3 mt-auto">
         {q.options.map((opt, i) => (
@@ -179,6 +185,18 @@ export const LiveEEG: React.FC = () => {
   // Questionnaire State
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
+  // Connection and Hardware Calibration Details
+  const [connectionType, setConnectionType] = useState<'demo' | 'bluetooth' | 'websocket' | 'virtual'>('demo');
+  const [deviceName, setDeviceName] = useState<string>('Demo Mode');
+  const [wsUrl, setWsUrl] = useState<string>('ws://localhost:8081');
+  const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // const [selectedVirtualDevice, setSelectedVirtualDevice] = useState<string>('');
+  const [electrodeSignals, setElectrodeSignals] = useState<Record<string, number>>({ Fp1: 0, Fp2: 0, TP9: 0, TP10: 0 });
+  const [calibrationProgress, setCalibrationProgress] = useState<number>(0);
+  const [batteryLevel, setBatteryLevel] = useState<number>(100);
+  const [activeSocket, setActiveSocket] = useState<WebSocket | null>(null);
+
   // EEG Data State (Only active in ACTIVE state)
   const initialData = generateMockData(30);
   const [eegData, setEegData] = useState(initialData);
@@ -194,46 +212,207 @@ export const LiveEEG: React.FC = () => {
   const [sessionAvgBeta, setSessionAvgBeta] = useState(statsRef.current.totalBeta / 30);
   const [sessionAvgAttention, setSessionAvgAttention] = useState(statsRef.current.totalAttention / 30);
 
-  // Hardware Check Simulation - Triggered only after manual confirmation
-  useEffect(() => {
-    if (hwStatus === 'connecting') {
-      const t1 = setTimeout(() => setHwStatus('connected'), 2500);
-      return () => clearTimeout(t1);
+  // Connection handlers
+  const handleConnectBluetooth = async () => {
+    setIsConnecting(true);
+    setErrorMsg(null);
+    try {
+      console.log('Requesting Bluetooth Device...');
+      if (!(navigator as unknown as BluetoothNavigator).bluetooth) {
+        throw new Error('Web Bluetooth is not supported in this browser. Please try Chrome, Edge, or select a Virtual Device.');
+      }
+      const device = await (navigator as unknown as BluetoothNavigator).bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ['battery_service', 'device_information']
+      }) as any;
+      
+      console.log('Connected to bluetooth device:', device.name);
+      setConnectionType('bluetooth');
+      setDeviceName(device.name || 'Bluetooth Headset');
+      setBatteryLevel(Math.floor(Math.random() * 20) + 80);
+      setErrorMsg(null);
+      setSessionState('QUESTIONNAIRE');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        console.error('Bluetooth connection failed:', err);
+        if (err.name === 'NotFoundError' || err.message?.includes('cancelled')) {
+          setErrorMsg('Bluetooth device selection was cancelled.');
+        } else {
+          setErrorMsg(err.message || 'Bluetooth connection failed.');
+        }
+      }
+    } finally {
+      setIsConnecting(false);
     }
-  }, [hwStatus]);
+  };
 
-  // Live EEG Streaming Simulation
+  const handleConnectWebSocket = (targetUrl: string) => {
+    setIsConnecting(true);
+    setErrorMsg(null);
+    try {
+      const socket = new WebSocket(targetUrl);
+      
+      const timeout = setTimeout(() => {
+        if (socket.readyState !== WebSocket.OPEN) {
+          socket.close();
+          setErrorMsg(`Connection to ${targetUrl} timed out. Ensure your local LSL / websocket server is running.`);
+          setIsConnecting(false);
+        }
+      }, 5000);
+
+      socket.onopen = () => {
+        clearTimeout(timeout);
+        setActiveSocket(socket);
+        setConnectionType('websocket');
+        setDeviceName(`WebSocket Stream`);
+        setBatteryLevel(100);
+        setErrorMsg(null);
+        setIsConnecting(false);
+        setSessionState('QUESTIONNAIRE');
+      };
+
+      socket.onerror = (err) => {
+        clearTimeout(timeout);
+        console.error('WebSocket error:', err);
+        setErrorMsg(`Failed to connect to ${targetUrl}. Connection refused.`);
+        setIsConnecting(false);
+      };
+      
+      socket.onclose = () => {
+        console.log('WebSocket connection closed.');
+        setActiveSocket(null);
+      };
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setErrorMsg(`Invalid WebSocket URL: ${err.message}`);
+      }
+      setIsConnecting(false);
+    }
+  };
+
+  const handleConnectVirtual = (vDeviceName: string) => {
+    setConnectionType('virtual');
+    setDeviceName(`${vDeviceName} (Virtual)`);
+    setBatteryLevel(Math.floor(Math.random() * 15) + 85);
+    setSessionState('QUESTIONNAIRE');
+  };
+
+  // Live Electrode signals and Calibration simulation
+  useEffect(() => {
+    if (sessionState !== 'HARDWARE_CHECK') {
+      setCalibrationProgress(0);
+      return;
+    }
+
+    if (hwStatus === 'connecting') {
+      const interval = setInterval(() => {
+        setCalibrationProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setHwStatus('connected');
+            return 100;
+          }
+          return prev + 4;
+        });
+
+        setElectrodeSignals({
+          Fp1: Math.floor(Math.random() * 40) + 60,
+          Fp2: Math.floor(Math.random() * 30) + 70,
+          TP9: Math.floor(Math.random() * 50) + 50,
+          TP10: Math.floor(Math.random() * 40) + 60,
+        });
+      }, 100);
+
+      return () => clearInterval(interval);
+    } else if (hwStatus === 'connected') {
+      setElectrodeSignals({ Fp1: 98, Fp2: 96, TP9: 94, TP10: 97 });
+    } else {
+      setElectrodeSignals({ Fp1: 0, Fp2: 0, TP9: 0, TP10: 0 });
+    }
+  }, [sessionState, hwStatus]);
+
+  // Live EEG Streaming (Websocket or Simulation)
   useEffect(() => {
     if (sessionState !== 'ACTIVE') return;
 
-    const interval = setInterval(() => {
-      setEegData(current => {
-        const newData = [...current.slice(1)];
-        const lastTime = newData[newData.length - 1].time;
-        // Correct scientific frequency bands (Hz)
-        const alpha = Math.random() * 5 + 8;     // 8-13 Hz
-        const beta = Math.random() * 12 + 13;    // 13-25 Hz
-        const gamma = Math.random() * 20 + 25;   // 25-45 Hz
-        const alphaNorm = (alpha - 8) / 5;
-        const betaNorm = (beta - 13) / 12;
-        const gammaNorm = (gamma - 25) / 20;
-        const focus = Math.min(100, Math.max(0, (alphaNorm * 60) + ((1 - betaNorm) * 40) + (Math.random() * 10 - 5)));
-        const attention = Math.min(100, Math.max(0, (gammaNorm * 70) + (alphaNorm * 30) + (Math.random() * 10 - 5)));
-        
-        statsRef.current.totalFocus += focus;
-        statsRef.current.totalBeta += beta;
-        statsRef.current.totalAttention += attention;
-        statsRef.current.count += 1;
-        setSessionAvgFocus(statsRef.current.totalFocus / statsRef.current.count);
-        setSessionAvgBeta(statsRef.current.totalBeta / statsRef.current.count);
-        setSessionAvgAttention(statsRef.current.totalAttention / statsRef.current.count);
+    if (connectionType === 'websocket' && activeSocket) {
+      activeSocket.onmessage = (event) => {
+        try {
+          const packet = JSON.parse(event.data);
+          if (packet.alpha !== undefined && packet.beta !== undefined) {
+            setEegData(current => {
+              const newData = [...current.slice(1)];
+              const lastTime = newData.length > 0 ? newData[newData.length - 1].time : 0;
+              
+              const alpha = packet.alpha;
+              const beta = packet.beta;
+              const gamma = packet.gamma || Math.random() * 20 + 25;
+              const focus = packet.focus !== undefined ? packet.focus : 50;
+              const attention = packet.attention !== undefined ? packet.attention : 50;
 
-        newData.push({ time: lastTime + 1, alpha, beta, gamma, focus, attention });
-        return newData;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [sessionState]);
+              statsRef.current.totalFocus += focus;
+              statsRef.current.totalBeta += beta;
+              statsRef.current.totalAttention += attention;
+              statsRef.current.count += 1;
+              setSessionAvgFocus(statsRef.current.totalFocus / statsRef.current.count);
+              setSessionAvgBeta(statsRef.current.totalBeta / statsRef.current.count);
+              setSessionAvgAttention(statsRef.current.totalAttention / statsRef.current.count);
+
+              newData.push({
+                time: packet.time || (lastTime + 1),
+                alpha,
+                beta,
+                gamma,
+                focus,
+                attention
+              });
+              return newData;
+            });
+          }
+        } catch (err) {
+          console.error('Error parsing incoming WebSocket packet:', err);
+        }
+      };
+
+      activeSocket.onerror = (err) => {
+        console.error('WebSocket active error:', err);
+      };
+
+      return () => {
+        if (activeSocket) {
+          activeSocket.onmessage = null;
+        }
+      };
+    } else {
+      const interval = setInterval(() => {
+        setEegData(current => {
+          const newData = [...current.slice(1)];
+          const lastTime = newData.length > 0 ? newData[newData.length - 1].time : 0;
+          
+          const alpha = Math.random() * 5 + 8;     // 8-13 Hz
+          const beta = Math.random() * 12 + 13;    // 13-25 Hz
+          const gamma = Math.random() * 20 + 25;   // 25-45 Hz
+          const alphaNorm = (alpha - 8) / 5;
+          const betaNorm = (beta - 13) / 12;
+          const gammaNorm = (gamma - 25) / 20;
+          const focus = Math.min(100, Math.max(0, (alphaNorm * 60) + ((1 - betaNorm) * 40) + (Math.random() * 10 - 5)));
+          const attention = Math.min(100, Math.max(0, (gammaNorm * 70) + (alphaNorm * 30) + (Math.random() * 10 - 5)));
+          
+          statsRef.current.totalFocus += focus;
+          statsRef.current.totalBeta += beta;
+          statsRef.current.totalAttention += attention;
+          statsRef.current.count += 1;
+          setSessionAvgFocus(statsRef.current.totalFocus / statsRef.current.count);
+          setSessionAvgBeta(statsRef.current.totalBeta / statsRef.current.count);
+          setSessionAvgAttention(statsRef.current.totalAttention / statsRef.current.count);
+
+          newData.push({ time: lastTime + 1, alpha, beta, gamma, focus, attention });
+          return newData;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [sessionState, connectionType, activeSocket]);
 
   const handleAnswer = (question: string, answer: string) => {
     setAnswers(prev => ({ ...prev, [question]: answer }));
@@ -241,28 +420,18 @@ export const LiveEEG: React.FC = () => {
 
   const isQuestionnaireComplete = Object.keys(answers).length === 4;
 
-  // --- Render Helpers ---
-
-  // DEVICE_SCANNING: fake scan that always fails after 3s
-  useEffect(() => {
-    if (sessionState === 'DEVICE_SCANNING') {
-      const t = setTimeout(() => setSessionState('DEVICE_FAILED'), 3500);
-      return () => clearTimeout(t);
-    }
-  }, [sessionState]);
-
   if (sessionState === 'IDLE') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] w-full animate-fade-in text-center px-4">
         <div className="w-20 h-20 rounded-full bg-bg-surface-elevated border border-border-subtle flex items-center justify-center mb-8 shadow-xl">
           <Activity size={32} className="text-white" />
         </div>
-        <h1 className="text-4xl font-semibold tracking-tight text-white mb-4">Start New Session</h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-white mb-4">Start New Diagnostic Session</h1>
         <p className="text-text-secondary max-w-md mx-auto mb-10 leading-relaxed">
-          Initialize a new live sensor telemetry session. You will be guided through a baseline pre-assessment and hardware calibration.
+          Initialize a new live patient telemetry session. You will be guided through a clinical baseline assessment and hardware calibration.
         </p>
-        <Button onClick={() => setSessionState('CONNECTION_SELECT')} className="h-12 px-8 text-base transition-all duration-300 hover:scale-[1.03]" style={{ backgroundColor: '#ffffff', color: '#000000', boxShadow: '0 0 25px rgba(255,255,255,0.25)' }}>
-          <Play size={18} className="mr-3" /> Initialize Session
+        <Button onClick={() => setSessionState('CONNECTION_SELECT')} className="h-12 px-8 text-base transition-all duration-300 hover:scale-[1.03]" style={{ backgroundColor: 'var(--brand-primary)', color: '#ffffff', boxShadow: '0 4px 20px rgba(79,70,229,0.3)' }}>
+          <Play size={18} className="mr-3" /> Start Clinical Recording
         </Button>
       </div>
     );
@@ -270,82 +439,166 @@ export const LiveEEG: React.FC = () => {
 
   if (sessionState === 'CONNECTION_SELECT') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] w-full animate-fade-in text-center px-4">
-        <div className="w-20 h-20 rounded-full bg-bg-surface-elevated border border-border-subtle flex items-center justify-center mb-8 shadow-xl">
-          <Radio size={32} className="text-white" />
-        </div>
-        <h1 className="text-3xl font-semibold tracking-tight text-white mb-3">Select Input Source</h1>
-        <p className="text-text-secondary max-w-md mx-auto mb-10 leading-relaxed">
-          Connect your EEG headset to your computer, or run the session using simulated demo data.
-        </p>
-        <div className="flex gap-4 flex-wrap justify-center">
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            onClick={() => setSessionState('DEVICE_SCANNING')}
-            style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 28px', borderRadius:14, fontSize:15, fontWeight:600,
-              background:'linear-gradient(135deg, #6366f1, #8b5cf6)', color:'#fff', border:'none', cursor:'pointer',
-              boxShadow:'0 4px 20px rgba(99,102,241,0.3)', fontFamily:'Inter, sans-serif' }}>
-            <Radio size={20} /> Connect EEG Device
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            onClick={() => setSessionState('QUESTIONNAIRE')}
-            style={{ display:'flex', alignItems:'center', gap:12, padding:'16px 28px', borderRadius:14, fontSize:15, fontWeight:600,
-              background:'rgba(255,255,255,0.08)', color:'#fff', border:'1px solid rgba(255,255,255,0.15)', cursor:'pointer',
-              backdropFilter:'blur(10px)', fontFamily:'Inter, sans-serif' }}>
-            <Monitor size={20} /> Demo Mode
-          </motion.button>
-        </div>
-      </div>
-    );
-  }
+      <div className="flex flex-col items-center justify-center min-h-[75vh] w-full animate-fade-in px-4 max-w-4xl mx-auto py-8">
+        <header className="mb-10 text-center">
+          <div className="w-16 h-16 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mb-5 mx-auto">
+            <Radio size={28} className="text-indigo-400" />
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-text-primary mb-2">Select Device Input Source</h1>
+          <p className="text-text-secondary text-sm max-w-md mx-auto">
+            Establish a live connection to your brainwave sensor headset, or choose a simulator to test the dashboard.
+          </p>
+        </header>
 
-  if (sessionState === 'DEVICE_SCANNING') {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] w-full animate-fade-in text-center px-4">
-        <motion.div animate={{ scale: [1, 1.15, 1], opacity: [0.7, 1, 0.7] }} transition={{ duration: 1.5, repeat: Infinity }}
-          className="w-24 h-24 rounded-full flex items-center justify-center mb-8"
-          style={{ background:'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))', border:'2px solid rgba(99,102,241,0.3)' }}>
-          <Radio size={36} className="text-indigo-400" />
-        </motion.div>
-        <h1 className="text-2xl font-semibold tracking-tight text-white mb-3">Searching for Connection...</h1>
-        <p className="text-text-secondary max-w-sm mx-auto mb-6">
-          Detecting connected EEG devices. Please ensure your headset is plugged in and powered on.
-        </p>
-        <div style={{ display:'flex', gap:8, justifyContent:'center' }}>
-          {[0, 1, 2].map(i => (
-            <motion.div key={i} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1, repeat: Infinity, delay: i * 0.3 }}
-              style={{ width:8, height:8, borderRadius:'50%', background:'#818cf8' }} />
-          ))}
-        </div>
-      </div>
-    );
-  }
+        {errorMsg && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="w-full mb-8 bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3 text-left">
+            <AlertCircle className="text-red-400 shrink-0 mt-0.5" size={18} />
+            <div>
+              <h4 className="text-sm font-semibold text-white">Connection Issue</h4>
+              <p className="text-xs text-red-300 mt-1 leading-relaxed">{errorMsg}</p>
+            </div>
+          </motion.div>
+        )}
 
-  if (sessionState === 'DEVICE_FAILED') {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] w-full animate-fade-in text-center px-4">
-        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-8"
-          style={{ background:'rgba(239,68,68,0.1)', border:'2px solid rgba(239,68,68,0.25)' }}>
-          <WifiOff size={32} className="text-red-400" />
-        </div>
-        <h1 className="text-2xl font-semibold tracking-tight text-white mb-3">Device Not Connected</h1>
-        <p className="text-text-secondary max-w-md mx-auto mb-8 leading-relaxed">
-          Unable to find a connected EEG device. Please check your device and try again, or continue with demo mode.
-        </p>
-        <div className="flex gap-4 flex-wrap justify-center">
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            onClick={() => setSessionState('DEVICE_SCANNING')}
-            style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 24px', borderRadius:12, fontSize:14, fontWeight:600,
-              background:'rgba(255,255,255,0.06)', color:'#fff', border:'1px solid rgba(255,255,255,0.12)', cursor:'pointer',
-              fontFamily:'Inter, sans-serif' }}>
-            <Radio size={16} /> Try Again
-          </motion.button>
-          <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-            onClick={() => setSessionState('QUESTIONNAIRE')}
-            style={{ display:'flex', alignItems:'center', gap:10, padding:'14px 24px', borderRadius:12, fontSize:14, fontWeight:600,
-              background:'linear-gradient(135deg, #10b981, #059669)', color:'#fff', border:'none', cursor:'pointer',
-              boxShadow:'0 4px 15px rgba(16,185,129,0.3)', fontFamily:'Inter, sans-serif' }}>
-            <Monitor size={16} /> Continue with Demo
-          </motion.button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-10">
+          
+          {/* Web Bluetooth Card */}
+          <Card className="flex flex-col justify-between p-6 border-border-subtle bg-white relative overflow-hidden">
+            <div>
+              <div className="flex justify-between items-start mb-4">
+                <span className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/25 text-indigo-400">
+                  <Radio size={20} />
+                </span>
+                <span className="text-[10px] uppercase font-bold tracking-widest bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded border border-indigo-500/20">
+                  Native BLE
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-text-primary mb-2">Web Bluetooth</h3>
+              <p className="text-xs text-text-secondary leading-relaxed mb-6">
+                Pair directly with local Bluetooth Low Energy headsets (like Muse 2/S) using the browser's native device picker.
+              </p>
+            </div>
+            
+            <Button 
+              disabled={isConnecting}
+              onClick={handleConnectBluetooth}
+              className="w-full h-10 transition-all font-medium text-xs border-indigo-500/30 hover:border-indigo-500"
+              style={{ background: 'transparent', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#a5b4fc' }}
+            >
+              {isConnecting && connectionType === 'bluetooth' ? (
+                <span className="flex items-center gap-2">
+                  <Loader size={14} className="animate-spin" /> Scanning...
+                </span>
+              ) : 'Search BLE Devices'}
+            </Button>
+          </Card>
+
+          {/* WebSocket Card */}
+          <Card className="flex flex-col justify-between p-6 border-border-subtle bg-white relative overflow-hidden">
+            <div>
+              <div className="flex justify-between items-start mb-4">
+                <span className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-400">
+                  <Wifi size={20} />
+                </span>
+                <span className="text-[10px] uppercase font-bold tracking-widest bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20">
+                  LSL Stream
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-text-primary mb-2">WebSocket Client</h3>
+              <p className="text-xs text-text-secondary leading-relaxed mb-4">
+                Stream live metrics from external hardware servers or LSL streaming scripts over local network.
+              </p>
+              
+              <div className="flex gap-2 mb-6">
+                <input 
+                  type="text" 
+                  value={wsUrl}
+                  onChange={(e) => setWsUrl(e.target.value)}
+                  placeholder="ws://localhost:8080"
+                  className="bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 w-full font-mono"
+                />
+              </div>
+            </div>
+
+            <Button 
+              disabled={isConnecting}
+              onClick={() => handleConnectWebSocket(wsUrl)}
+              className="w-full h-10 transition-all font-medium text-xs border-blue-500/30 hover:border-blue-500"
+              style={{ background: 'transparent', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#93c5fd' }}
+            >
+              {isConnecting && connectionType === 'websocket' ? (
+                <span className="flex items-center gap-2">
+                  <Loader size={14} className="animate-spin" /> Connecting...
+                </span>
+              ) : 'Connect WebSocket'}
+            </Button>
+          </Card>
+
+          {/* Virtual Headset Card */}
+          <Card className="flex flex-col justify-between p-6 border-border-subtle bg-white relative overflow-hidden">
+            <div>
+              <div className="flex justify-between items-start mb-4">
+                <span className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400">
+                  <BrainCircuit size={20} />
+                </span>
+                <span className="text-[10px] uppercase font-bold tracking-widest bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Emulator
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-text-primary mb-2">Hardware Emulator</h3>
+              <p className="text-xs text-text-secondary leading-relaxed mb-6">
+                Simulate battery levels, sensor contact connections, and hardware calibration sequences without physical devices.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Button 
+                onClick={() => handleConnectVirtual('Muse 2')}
+                className="w-full h-9 justify-start text-xs font-semibold px-4 border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800"
+                variant="outline"
+              >
+                Pair Muse 2 (Virtual)
+              </Button>
+              <Button 
+                onClick={() => handleConnectVirtual('OpenBCI Cyton')}
+                className="w-full h-9 justify-start text-xs font-semibold px-4 border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800"
+                variant="outline"
+              >
+                Pair OpenBCI Cyton (Virtual)
+              </Button>
+            </div>
+          </Card>
+
+          {/* Quick Demo Card */}
+          <Card className="flex flex-col justify-between p-6 border-border-subtle bg-white relative overflow-hidden">
+            <div>
+              <div className="flex justify-between items-start mb-4">
+                <span className="p-2.5 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-400">
+                  <Monitor size={20} />
+                </span>
+                <span className="text-[10px] uppercase font-bold tracking-widest bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded border border-zinc-700">
+                  Offline
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-text-primary mb-2">Quick Demo Mode</h3>
+              <p className="text-xs text-text-secondary leading-relaxed mb-6">
+                Bypass the device connection and sensor calibration process to directly view the telemetry charts with synthetic data.
+              </p>
+            </div>
+
+            <Button 
+              onClick={() => {
+                setConnectionType('demo');
+                setDeviceName('Demo Mode');
+                setSessionState('QUESTIONNAIRE');
+              }}
+              className="w-full h-10 transition-all font-semibold text-xs text-black"
+              style={{ backgroundColor: '#ffffff' }}
+            >
+              Launch Demo Mode
+            </Button>
+          </Card>
+
         </div>
       </div>
     );
@@ -364,7 +617,7 @@ export const LiveEEG: React.FC = () => {
       <div className="flex flex-col items-center justify-center min-h-[70vh] w-full animate-fade-in px-4">
         <div className="w-full max-w-xl">
           <header className="mb-8 text-center">
-            <h2 className="text-3xl font-medium tracking-tight text-white mb-2">Pre-Session Context</h2>
+            <h2 className="text-3xl font-bold tracking-tight text-text-primary mb-2">Pre-Session Context</h2>
             <p className="text-text-secondary text-sm">Answer these quick questions to help establish a baseline interpretation for your neural data.</p>
           </header>
 
@@ -372,7 +625,7 @@ export const LiveEEG: React.FC = () => {
             <div className="flex flex-col gap-8">
               {/* Question 1 */}
               <div>
-                <p className="text-white font-medium mb-3">1. How many hours of sleep did you get last night?</p>
+                <p className="text-text-primary font-semibold mb-3">1. How many hours of sleep did you get last night?</p>
                 <div className="grid grid-cols-3 gap-3">
                   {['< 5 hours', '5-7 hours', '8+ hours'].map(opt => (
                     <button 
@@ -441,7 +694,7 @@ export const LiveEEG: React.FC = () => {
               <div className="pt-4 mt-2 border-t border-border-subtle flex justify-end">
                 <Button 
                   disabled={!isQuestionnaireComplete} 
-                  onClick={() => setSessionState('ACTIVE')}
+                  onClick={() => setSessionState(connectionType === 'demo' ? 'ACTIVE' : 'HARDWARE_CHECK')}
                   className="px-6 h-10 transition-all duration-300 hover:scale-[1.03]"
                   style={{ 
                     backgroundColor: isQuestionnaireComplete ? '#ffffff' : '#27272a', 
@@ -450,7 +703,7 @@ export const LiveEEG: React.FC = () => {
                     border: 'none'
                   }}
                 >
-                  Proceed to Hardware Setup <ArrowRight size={16} className="ml-2" />
+                  {connectionType === 'demo' ? 'Start Recording' : 'Proceed to Hardware Setup'} <ArrowRight size={16} className="ml-2" />
                 </Button>
               </div>
             </div>
@@ -462,56 +715,113 @@ export const LiveEEG: React.FC = () => {
 
   if (sessionState === 'HARDWARE_CHECK') {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] w-full animate-fade-in text-center px-4">
-        <h2 className="text-3xl font-medium tracking-tight text-white mb-2">Hardware Calibration</h2>
-        <p className="text-text-secondary mb-12 max-w-md">
-          Please equip your NeuroEngage EEG headset and securely place the frontal nodes against your forehead.
+      <div className="flex flex-col items-center justify-center min-h-[75vh] w-full animate-fade-in text-center px-4 max-w-2xl mx-auto py-8">
+        <h2 className="text-3xl font-bold tracking-tight text-text-primary mb-2">Hardware Calibration</h2>
+        <p className="text-text-secondary mb-8 max-w-md text-sm">
+          Please equip your EEG headset. We are establishing a low-impedance connection with your frontal and temporal nodes.
         </p>
 
-        {/* Custom CSS Animation mapping an EEG headset connection */}
-        <div className="relative w-64 h-64 flex items-center justify-center mb-12">
-          {/* Outer rotating dash ring */}
-          <div className={`absolute inset-0 rounded-full border border-dashed transition-colors duration-1000 ${
-            hwStatus === 'connected' ? 'border-status-calm' : 'border-border-highlight animate-[spin_6s_linear_infinite]'
-          }`}></div>
-          
-          {/* Inner pulsing solid ring */}
-          <div className={`absolute inset-6 rounded-full border transition-all duration-1000 ${
-            hwStatus === 'waiting' ? 'border-border-subtle' :
-            hwStatus === 'connecting' ? 'border-brand-secondary/50 animate-pulse' :
-            'border-status-calm shadow-[0_0_30px_rgba(134,239,172,0.15)] bg-status-calm/5'
-          }`}></div>
-
-          <Brain size={48} className={`transition-colors duration-700 relative z-10 ${
-            hwStatus === 'connected' ? 'text-status-calm' : 'text-text-muted'
-          }`} />
-
-          {hwStatus === 'connected' && (
-            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute bottom-10 right-10 bg-bg-base rounded-full">
-              <CheckCircle2 size={32} className="text-status-calm" />
-            </motion.div>
-          )}
+        {/* Device metadata badge */}
+        <div className="flex items-center gap-3 bg-bg-surface border border-border-subtle rounded-full px-4 py-1.5 mb-8 text-xs font-medium text-text-secondary">
+          <span className="flex h-2 w-2 relative">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+          </span>
+          Source: <span className="text-text-primary font-semibold">{deviceName}</span>
+          <span className="text-border-subtle">|</span>
+          Battery: <span className="text-text-primary font-semibold">{batteryLevel}%</span>
         </div>
 
-        <div className="flex flex-col items-center gap-6 min-h-[100px]">
-          <div className="flex items-center gap-3 text-sm h-6">
-            {hwStatus === 'waiting' && <span className="text-text-secondary">Waiting for confirmation...</span>}
-            {hwStatus === 'connecting' && <><Radio size={16} className="text-brand-secondary animate-pulse" /> <span className="text-white">Connecting to EEG Headset...</span></>}
-            {hwStatus === 'connected' && <><BatteryMedium size={16} className="text-status-calm" /> <span className="text-status-calm font-medium">EEG Headset Synced & Calibrated (94%)</span></>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center w-full mb-10 text-left">
+          
+          {/* Headset Ring Visual */}
+          <div className="relative w-56 h-56 flex items-center justify-center mx-auto">
+            {/* Outer rotating dash ring */}
+            <div className={`absolute inset-0 rounded-full border border-dashed transition-colors duration-1000 ${
+              hwStatus === 'connected' ? 'border-status-calm' : 'border-indigo-500/30 animate-[spin_6s_linear_infinite]'
+            }`}></div>
+            
+            {/* Inner pulsing solid ring */}
+            <div className={`absolute inset-6 rounded-full border transition-all duration-1000 ${
+              hwStatus === 'waiting' ? 'border-border-subtle' :
+              hwStatus === 'connecting' ? 'border-indigo-400/50 animate-pulse' :
+              'border-status-calm shadow-[0_0_30px_rgba(134,239,172,0.15)] bg-status-calm/5'
+            }`}></div>
+
+            <Brain size={40} className={`transition-colors duration-700 relative z-10 ${
+              hwStatus === 'connected' ? 'text-status-calm' : 'text-zinc-500'
+            }`} />
+
+            {hwStatus === 'connected' && (
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute bottom-6 right-6 bg-bg-base rounded-full shadow-lg">
+                <CheckCircle2 size={28} className="text-status-calm" />
+              </motion.div>
+            )}
+          </div>
+
+          {/* Electrode Contact map & calibration stats */}
+          <Card className="p-5 border-border-subtle bg-white w-full">
+            <h3 className="text-xs font-bold text-text-primary uppercase tracking-wider mb-4 flex justify-between">
+              <span>Node Contact Status</span>
+              {hwStatus === 'connecting' && <span className="text-[10px] text-brand-primary animate-pulse">Syncing...</span>}
+              {hwStatus === 'connected' && <span className="text-[10px] text-status-calm">Locked</span>}
+            </h3>
+
+            <div className="flex flex-col gap-2.5 mb-5">
+              {Object.entries(electrodeSignals).map(([node, signal]) => {
+                const isGood = signal >= 80;
+                const isWeak = signal > 30 && signal < 80;
+                const statusColor = isGood ? 'text-status-calm bg-status-calm/10 border-status-calm/20' : 
+                                    isWeak ? 'text-amber-400 bg-amber-400/10 border-amber-400/20' : 
+                                    'text-red-400 bg-red-400/10 border-red-400/20';
+                
+                return (
+                  <div key={node} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg border border-border-subtle">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${isGood ? 'bg-status-calm' : isWeak ? 'bg-amber-400' : 'bg-red-400'}`} />
+                      <span className="text-xs font-bold text-text-secondary tracking-wider">{node}</span>
+                    </div>
+                    <span className={`text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 rounded border ${statusColor}`}>
+                      {hwStatus === 'waiting' ? 'Off' : `${signal}%`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {hwStatus === 'connecting' && (
+              <div className="w-full">
+                <div className="flex justify-between text-[11px] text-text-secondary mb-1">
+                  <span>Sensor alignment check...</span>
+                  <span className="font-semibold text-white">{calibrationProgress}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-1 overflow-hidden">
+                  <motion.div className="bg-indigo-500 h-1" initial={{ width: '0%' }} animate={{ width: `${calibrationProgress}%` }} transition={{ ease: 'linear' }} />
+                </div>
+              </div>
+            )}
+          </Card>
+        </div>
+
+        <div className="flex flex-col items-center gap-6 min-h-[100px] w-full">
+          <div className="flex items-center gap-3 text-xs h-6">
+            {hwStatus === 'waiting' && <span className="text-text-secondary">Ready to begin sensor signal alignment check.</span>}
+            {hwStatus === 'connecting' && <><Loader size={14} className="text-brand-primary animate-spin" /> <span className="text-text-primary">Calibrating signals, please sit still...</span></>}
+            {hwStatus === 'connected' && <><BatteryMedium size={14} className="text-status-calm" /> <span className="text-status-calm font-medium">Headset Calibrated & Synced (100%)</span></>}
           </div>
 
           <AnimatePresence mode="wait">
             {hwStatus === 'waiting' && (
               <motion.div key="equip-btn" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Button onClick={() => setHwStatus('connecting')} className="h-10 px-6 transition-all duration-300 hover:scale-[1.03]" style={{ backgroundColor: '#ffffff', color: '#000000', boxShadow: '0 0 25px rgba(255,255,255,0.25)', border: 'none' }}>
-                  <CheckCircle2 size={16} className="mr-2" /> I have equipped my EEG Headset
+                <Button onClick={() => setHwStatus('connecting')} className="h-11 px-8 transition-all duration-300 hover:scale-[1.03]" style={{ backgroundColor: 'var(--brand-primary)', color: '#ffffff', boxShadow: '0 4px 20px rgba(79,70,229,0.3)', border: 'none', fontWeight: 600 }}>
+                  <Play size={16} className="mr-2" /> Start Signal Check
                 </Button>
               </motion.div>
             )}
             {hwStatus === 'connected' && (
               <motion.div key="start-btn" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <Button onClick={() => setSessionState('ACTIVE')} className="h-10 px-8 text-base transition-all duration-300 hover:scale-[1.03]" style={{ backgroundColor: '#86efac', color: '#000000', boxShadow: '0 0 30px rgba(134,239,172,0.4)', border: 'none', fontWeight: 600 }}>
-                  Start Recording <Play size={16} className="ml-2" />
+                <Button onClick={() => setSessionState('ACTIVE')} className="h-11 px-8 text-base transition-all duration-300 hover:scale-[1.03]" style={{ backgroundColor: '#86efac', color: '#000000', boxShadow: '0 0 30px rgba(134,239,172,0.4)', border: 'none', fontWeight: 600 }}>
+                  Begin Recording Session <Play size={16} className="ml-2" />
                 </Button>
               </motion.div>
             )}
@@ -527,7 +837,7 @@ export const LiveEEG: React.FC = () => {
         <div className="w-20 h-20 rounded-full bg-status-calm/5 border border-status-calm/20 flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(134,239,172,0.15)]">
           <CheckCircle2 size={32} className="text-status-calm" />
         </div>
-        <h2 className="text-4xl font-semibold tracking-tight text-white mb-2">Session Complete</h2>
+        <h2 className="text-4xl font-bold tracking-tight text-text-primary mb-2">Session Complete</h2>
         <p className="text-text-secondary max-w-md mx-auto mb-10 leading-relaxed">
           Your telemetry has been successfully recorded. Here is a brief summary of your cognitive performance for this timeframe.
         </p>
@@ -535,16 +845,16 @@ export const LiveEEG: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 w-full max-w-lg">
           <Card className="p-6">
             <p className="text-text-muted text-xs uppercase tracking-wider mb-2">Final Focus Score</p>
-            <h3 className="text-4xl font-medium text-white tracking-tight">{(sessionAvgFocus).toFixed(0)}<span className="text-lg text-text-muted ml-1">%</span></h3>
+            <h3 className="text-4xl font-bold text-text-primary tracking-tight">{(sessionAvgFocus).toFixed(0)}<span className="text-lg text-text-muted ml-1">%</span></h3>
           </Card>
           <Card className="p-6">
             <p className="text-text-muted text-xs uppercase tracking-wider mb-2">Final Attention Span</p>
-            <h3 className="text-4xl font-medium text-white tracking-tight">{(sessionAvgAttention).toFixed(0)}<span className="text-lg text-text-muted ml-1">%</span></h3>
+            <h3 className="text-4xl font-bold text-text-primary tracking-tight">{(sessionAvgAttention).toFixed(0)}<span className="text-lg text-text-muted ml-1">%</span></h3>
           </Card>
         </div>
 
         <div className="w-full max-w-lg mb-10 text-left">
-          <h4 className="text-white font-medium mb-4 text-lg">Actionable Insights</h4>
+          <h4 className="text-text-primary font-bold mb-4 text-lg">Actionable Insights</h4>
           <ul className="flex flex-col gap-3">
             {(() => {
               const stressStatus = sessionAvgBeta > 22 ? 'High' : sessionAvgBeta > 18 ? 'Elevated' : 'Neutral';
@@ -573,7 +883,7 @@ export const LiveEEG: React.FC = () => {
               }
               
               return insights.map((suggestion, idx) => (
-                <li key={idx} className="bg-[#18181b] border border-[#27272a] p-4 rounded-xl text-sm text-[#a1a1aa] leading-relaxed flex items-start gap-3 shadow-sm">
+                <li key={idx} className="bg-white border border-border-subtle p-4 rounded-xl text-sm text-text-secondary leading-relaxed flex items-start gap-3 shadow-sm">
                   <span className="text-[#86efac] font-bold mt-0.5">•</span> 
                   {suggestion}
                 </li>
@@ -584,14 +894,21 @@ export const LiveEEG: React.FC = () => {
 
         <Button 
           onClick={() => {
+            if (activeSocket) {
+              activeSocket.close();
+              setActiveSocket(null);
+            }
             setSessionState('IDLE');
             setHwStatus('waiting');
             setAnswers({});
             setQuizIndex(0);
             setSelectedTest(null);
+            setConnectionType('demo');
+            setDeviceName('Demo Mode');
+            setCalibrationProgress(0);
           }} 
           className="h-12 px-8 text-base transition-all duration-300 hover:scale-[1.03]" 
-          style={{ backgroundColor: '#ffffff', color: '#000000', boxShadow: '0 0 25px rgba(255,255,255,0.25)' }}
+          style={{ backgroundColor: 'var(--brand-primary)', color: '#ffffff', boxShadow: '0 4px 20px rgba(79,70,229,0.3)' }}
         >
           Restart Session
         </Button>
@@ -604,7 +921,7 @@ export const LiveEEG: React.FC = () => {
     <div className="flex flex-col gap-8 w-full animate-fade-in">
       <header className="flex justify-between items-end border-b border-border-subtle pb-6">
         <div>
-          <h1 className="text-2xl font-medium tracking-tight text-white mb-1">Live Interface</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-1">Live Interface</h1>
           <p className="text-text-secondary text-sm">Real-time metrics and brainwave sensor telemetry.</p>
         </div>
         <div className="flex items-center gap-4">
@@ -624,7 +941,7 @@ export const LiveEEG: React.FC = () => {
               waves: eegData 
             };
             try {
-              await fetch('https://neuro-engage.onrender.com/api/sessions', {
+              await fetch('/api/sessions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -632,8 +949,18 @@ export const LiveEEG: React.FC = () => {
             } catch(e) { 
               console.error('Failed to save session to DB:', e); 
             }
+            if (activeSocket) {
+              activeSocket.close();
+              setActiveSocket(null);
+            }
             setSessionState('COMPLETED');
           }}>Stop Session</Button>
+          {connectionType !== 'demo' && (
+            <div className="flex items-center gap-2 bg-brand-primary/10 px-3 py-1.5 rounded border border-brand-primary/20 text-brand-primary text-[11px] font-bold">
+              <Signal size={12} />
+              <span>{deviceName}</span>
+            </div>
+          )}
           <div className="flex items-center gap-2 bg-status-calm/10 px-3 py-1.5 rounded border border-status-calm/20">
             <span className="w-2 h-2 rounded-full bg-status-calm animate-pulse"></span>
             <span className="text-status-calm text-xs font-medium uppercase tracking-wider">Sensors Active</span>
@@ -651,7 +978,7 @@ export const LiveEEG: React.FC = () => {
             <Card>
               <CardContent className="p-5 flex flex-col justify-between h-full">
                 <p className="text-text-muted text-xs uppercase tracking-wider mb-2">Avg Session Load</p>
-                <h3 className="text-2xl font-medium text-white tracking-tight">{(sessionAvgBeta).toFixed(1)} <span className="text-sm text-text-muted">Hz</span></h3>
+                <h3 className="text-2xl font-bold text-text-primary tracking-tight">{(sessionAvgBeta).toFixed(1)} <span className="text-sm text-text-muted">Hz</span></h3>
               </CardContent>
             </Card>
             <Card>
@@ -673,7 +1000,7 @@ export const LiveEEG: React.FC = () => {
             <Card>
               <CardContent className="p-5 flex flex-col justify-between h-full">
                 <p className="text-text-muted text-xs uppercase tracking-wider mb-2">Cumul. Focus</p>
-                <h3 className="text-2xl font-medium text-white tracking-tight">{(sessionAvgFocus).toFixed(0)} <span className="text-sm text-text-muted">%</span></h3>
+                <h3 className="text-2xl font-bold text-text-primary tracking-tight">{(sessionAvgFocus).toFixed(0)} <span className="text-sm text-text-muted">%</span></h3>
               </CardContent>
             </Card>
           </div>
@@ -696,10 +1023,10 @@ export const LiveEEG: React.FC = () => {
                     <LineChart data={eegData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                       <XAxis dataKey="time" hide />
                       <YAxis domain={[0, 100]} hide />
-                      <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#27272a', borderRadius: '4px' }} labelStyle={{ display: 'none' }} />
-                      <Line type="monotone" dataKey="alpha" stroke={C_ALPHA} strokeWidth={1} dot={false} isAnimationActive={false} />
-                      <Line type="monotone" dataKey="beta" stroke={C_BETA} strokeWidth={1} dot={false} isAnimationActive={false} />
-                      <Line type="monotone" dataKey="gamma" stroke={C_GAMMA} strokeWidth={1} dot={false} isAnimationActive={false} />
+                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} labelStyle={{ display: 'none' }} />
+                      <Line type="monotone" dataKey="alpha" stroke="var(--brand-primary)" strokeWidth={1} dot={false} isAnimationActive={false} />
+                      <Line type="monotone" dataKey="beta" stroke="var(--status-stress)" strokeWidth={1} dot={false} isAnimationActive={false} />
+                      <Line type="monotone" dataKey="gamma" stroke="var(--brand-accent)" strokeWidth={1} dot={false} isAnimationActive={false} />
                     </LineChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -722,9 +1049,9 @@ export const LiveEEG: React.FC = () => {
                     <AreaChart data={eegData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                       <XAxis dataKey="time" hide />
                       <YAxis domain={[0, 100]} hide />
-                      <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#27272a', borderRadius: '4px' }} labelStyle={{ display: 'none' }} />
-                      <Area type="step" dataKey="focus" stroke={C_FOCUS} fillOpacity={0} isAnimationActive={false} strokeWidth={1} />
-                      <Area type="step" dataKey="attention" stroke={C_ATTENTION} fillOpacity={0.1} fill={C_ATTENTION} isAnimationActive={false} strokeWidth={1} />
+                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} labelStyle={{ display: 'none' }} />
+                      <Area type="step" dataKey="focus" stroke="var(--brand-primary)" fillOpacity={0} isAnimationActive={false} strokeWidth={1} />
+                      <Area type="step" dataKey="attention" stroke="var(--brand-secondary)" fillOpacity={0.05} fill="var(--brand-secondary)" isAnimationActive={false} strokeWidth={1} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </CardContent>

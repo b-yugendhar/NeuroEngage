@@ -1,10 +1,5 @@
 import React from 'react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from '../utils/cn';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
@@ -19,14 +14,14 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       primary: 'font-semibold',
       secondary: 'hover:opacity-80',
       outline: 'bg-transparent transition-colors',
-      ghost: 'bg-transparent hover:text-white transition-colors',
+      ghost: 'bg-transparent hover:bg-black/5 transition-colors',
     };
 
-    const variantStyles: any = {
-      primary: { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#ffffff', border: 'none', boxShadow: '0 2px 12px rgba(99,102,241,0.3)', borderRadius: 10 },
-      secondary: { color: '#ffffff', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10 },
-      outline: { color: '#ffffff', background: 'transparent', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10 },
-      ghost: { color: '#a1a1aa' }
+    const variantStyles: Record<string, React.CSSProperties> = {
+      primary: { background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))', color: '#ffffff', border: 'none', boxShadow: '0 4px 14px rgba(79,70,229,0.2)', borderRadius: 10 },
+      secondary: { color: 'var(--text-primary)', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 10 },
+      outline: { color: 'var(--text-primary)', background: 'transparent', border: '1px solid var(--border-highlight)', borderRadius: 10 },
+      ghost: { color: 'var(--text-secondary)' }
     };
 
     return (
@@ -48,12 +43,12 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, glass = false, children, ...props }, ref) => {
+  ({ className, children, ...props }, ref) => {
     return (
       <div
         ref={ref}
-        className={cn('rounded-md', className)}
-        style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, backdropFilter: 'blur(12px)', ...(props.style || {}) }}
+        className={cn('rounded-md glass-card', className)}
+        style={{ borderRadius: 12, ...(props.style || {}) }}
         {...props}
       >
         {children}
@@ -68,7 +63,7 @@ export const CardHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDiv
 );
 
 export const CardTitle = ({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
-  <h3 className={cn("text-base font-medium text-white", className)} {...props} />
+  <h3 className={cn("text-base font-semibold text-text-primary", className)} {...props} />
 );
 
 export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
@@ -95,9 +90,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             icon && "pl-9",
             className
           )}
-          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#ffffff', borderRadius: 10, ...(props.style || {}) }}
-          onFocus={e => { e.target.style.borderColor = 'rgba(99,102,241,0.6)'; e.target.style.boxShadow = '0 0 0 3px rgba(99,102,241,0.12)'; }}
-          onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.12)'; e.target.style.boxShadow = 'none'; }}
+          style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-highlight)', color: 'var(--text-primary)', borderRadius: 10, ...(props.style || {}) }}
+          onFocus={e => { e.target.style.borderColor = 'var(--brand-primary)'; e.target.style.boxShadow = '0 0 0 3px rgba(79,70,229,0.1)'; }}
+          onBlur={e => { e.target.style.borderColor = 'var(--border-highlight)'; e.target.style.boxShadow = 'none'; }}
           {...props}
         />
       </div>

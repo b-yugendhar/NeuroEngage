@@ -4,9 +4,19 @@ import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveCont
 import { History, Download, UploadCloud, ChevronDown, ChevronUp, Activity, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const C_LOAD = '#f87171';     
-const C_FOCUS = '#818cf8';    
-const C_ATTENTION = '#c084fc'; 
+interface SessionRecord {
+  id: string;
+  date: string;
+  duration: string;
+  avgStress: string;
+  avgFocus: string;
+  waves: { time: number; alpha: number; beta: number; gamma: number; focus: number; attention: number; }[];
+  context: Record<string, unknown>;
+}
+
+const C_LOAD = '#ef4444';     
+const C_FOCUS = '#3b82f6';    
+const C_ATTENTION = '#8b5cf6'; 
 
 // Removed static monthlyData array
 
@@ -29,32 +39,32 @@ export const Analysis: React.FC = () => {
   const userId = localStorage.getItem('neuro_user') || '';
   const isManager = role === 'manager';
 
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const pairingCode = localStorage.getItem('neuro_pairing_code');
-    const url = isManager ? `https://neuro-engage.onrender.com/api/sessions?managerCode=${pairingCode}` : `https://neuro-engage.onrender.com/api/sessions?userId=${userId}`;
+    const url = isManager ? `/api/sessions?managerCode=${pairingCode}` : `/api/sessions?userId=${userId}`;
     fetch(url)
       .then(res => res.json())
       .then(data => {
         if (data && Array.isArray(data)) {
-          const mapped = data.map((s: any) => ({
+          const mapped = data.map((s: { _id: string, date: string, duration?: string, avgStress: string, avgFocus: string, waves: { time: number; alpha: number; beta: number; gamma: number; focus: number; attention: number; }[], context: Record<string, unknown> }) => ({
             id: 'SES-' + s._id.slice(-4).toUpperCase(),
             date: new Date(s.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
             duration: s.duration || 'Live Recording',
             avgStress: s.avgStress,
             avgFocus: s.avgFocus,
             waves: s.waves,
-            context: s.context
+            context: s.context as Record<string, string>
           }));
           setSessions(mapped);
         }
       })
       .catch(err => console.error('Failed to fetch from MongoDB:', err));
-  }, []);
+  }, [isManager, userId]);
 
   const toggleDetails = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -106,7 +116,8 @@ export const Analysis: React.FC = () => {
           duration: 'Imported Data',
           avgStress: Math.random() > 0.5 ? 'Elevated' : 'Neutral',
           avgFocus: `${Math.floor(Math.random() * 20) + 75}%`,
-          waves: generateSessionWaves(Math.random() * 10)
+          waves: generateSessionWaves(Math.random() * 10),
+          context: {}
         };
         setSessions([newSession, ...sessions]);
         setIsUploading(false);
@@ -120,10 +131,10 @@ export const Analysis: React.FC = () => {
     <div className="flex flex-col gap-8 w-full animate-fade-in">
       <header className="flex justify-between items-end border-b border-border-subtle pb-6">
         <div>
-          <h1 className="text-2xl font-medium tracking-tight text-white mb-1">
-             {isManager ? 'Analysis Library' : 'My Session Reports'}
+          <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-1">
+             {isManager ? 'Diagnostic Report Library' : 'My Clinical Reports'}
           </h1>
-          <p className="text-text-secondary text-sm">Review historical baselines, detailed brainwave patterns, and telemetry records.</p>
+          <p className="text-text-secondary text-sm">Review historical baselines, detailed brainwave patterns, and patient diagnostic records.</p>
         </div>
         <div className="flex gap-2 relative">
           <input 
@@ -136,12 +147,12 @@ export const Analysis: React.FC = () => {
           <button 
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${isUploading ? 'opacity-50 cursor-not-allowed bg-border-subtle text-text-muted' : 'bg-white text-black hover:opacity-90'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${isUploading ? 'opacity-50 cursor-not-allowed bg-border-subtle text-text-muted' : 'bg-brand-primary text-white hover:opacity-90'}`}
           >
             <UploadCloud size={16} className={isUploading ? 'animate-bounce' : ''} /> 
             {isUploading ? 'Loading Data...' : 'Import Data'}
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-md bg-white text-black text-sm font-medium hover:bg-gray-200 transition-colors">
+          <button className="flex items-center gap-2 px-4 py-2 rounded-md bg-white border border-border-highlight text-text-primary text-sm font-medium hover:bg-gray-50 transition-colors">
             <Download size={16} /> Export
           </button>
         </div>
@@ -153,10 +164,10 @@ export const Analysis: React.FC = () => {
           <CardHeader className="flex flex-col xl:flex-row xl:justify-between xl:items-start py-6 gap-6">
             <div className="flex flex-col gap-2 max-w-sm">
               <CardTitle className="text-sm flex items-center gap-2 text-text-secondary mt-1">
-                <History className="text-white" size={14} /> Long-Term Cognitive Baseline
+                <History className="text-brand-primary" size={14} /> Long-Term Cognitive Baseline
               </CardTitle>
               <p className="font-normal text-text-muted text-xs leading-relaxed mt-1">
-                Historical overview tracking physiological vs cognitive vectors over an extended monthly cadence.
+                Historical overview tracking physiological vs cognitive metrics over an extended monthly clinical cadence.
               </p>
             </div>
             
@@ -193,7 +204,7 @@ export const Analysis: React.FC = () => {
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} dy={15} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} domain={[0, 100]} />
                     <Tooltip 
-                      contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#27272a', borderRadius: '4px' }}
+                      contentStyle={{ backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                     />
                     <Area type="monotone" name="Cognitive Load" dataKey="load" stroke={C_LOAD} fillOpacity={0.1} fill={C_LOAD} isAnimationActive={false} strokeWidth={1} />
                     <Area type="monotone" name="Focus" dataKey="focus" stroke={C_FOCUS} fillOpacity={0} isAnimationActive={false} strokeWidth={1} />
@@ -220,9 +231,9 @@ export const Analysis: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-border-subtle bg-bg-base/50">
-                  <th className="p-4 py-3 text-xs font-medium uppercase tracking-wider text-text-muted">Subject</th>
+                  <th className="p-4 py-3 text-xs font-medium uppercase tracking-wider text-text-muted">Patient</th>
                   <th className="p-4 py-3 text-xs font-medium uppercase tracking-wider text-text-muted">Recorded</th>
-                  <th className="p-4 py-3 text-xs font-medium uppercase tracking-wider text-text-muted">Activity</th>
+                  <th className="p-4 py-3 text-xs font-medium uppercase tracking-wider text-text-muted">Clinical Activity</th>
                   <th className="p-4 py-3 text-xs font-medium uppercase tracking-wider text-text-muted">State</th>
                   <th className="p-4 py-3 text-xs font-medium uppercase tracking-wider text-text-muted">Focus</th>
                   <th className="p-4 py-3 text-xs font-medium uppercase tracking-wider text-text-muted text-right">Details</th>
@@ -233,7 +244,7 @@ export const Analysis: React.FC = () => {
                   {sessions.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="p-8 text-center text-text-muted border-b border-border-subtle bg-bg-surface-elevated/20">
-                        No subject telemetry records found. Waiting for authorized subjects to transmit sensor data.
+                        No patient telemetry records found. Waiting for authorized patient diagnostic transmissions.
                       </td>
                     </tr>
                   ) : sessions.map((session) => (
@@ -242,12 +253,12 @@ export const Analysis: React.FC = () => {
                         className={`border-b border-border-subtle transition-colors cursor-pointer ${expandedId === session.id ? 'bg-border-subtle/50' : 'hover:bg-bg-surface-elevated/50'}`}
                         onClick={() => toggleDetails(session.id)}
                       >
-                        <td className="p-4 text-sm font-medium text-white">{session.context?.username || session.id}</td>
+                        <td className="p-4 text-sm font-medium text-text-primary">{(session.context?.username as string) || session.id}</td>
                         <td className="p-4 text-sm text-text-secondary">{session.date}</td>
                         <td className="p-4 text-sm text-text-secondary">
                           {session.context?.task === 'Take a Cognitive Quiz' 
-                            ? (session.context?.battery ? `Quiz: ${session.context.battery}` : 'Cognitive Quiz')
-                            : session.context?.task || session.duration}
+                            ? (session.context?.battery ? `Diagnostic: ${session.context.battery as string}` : 'Cognitive Diagnostic')
+                            : (session.context?.task as string) || session.duration}
                         </td>
                         <td className="p-4 text-sm">
                           <span className={`px-2 py-1 rounded text-xs font-medium border ${
@@ -258,7 +269,7 @@ export const Analysis: React.FC = () => {
                             {session.avgStress}
                           </span>
                         </td>
-                        <td className="p-4 text-sm text-white font-medium">{session.avgFocus}</td>
+                        <td className="p-4 text-sm text-text-primary font-medium">{session.avgFocus}</td>
                         <td className="p-4 text-sm text-text-secondary flex justify-end items-center gap-1">
                           {expandedId === session.id ? 'Hide' : 'Expand'}
                           {expandedId === session.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -277,23 +288,15 @@ export const Analysis: React.FC = () => {
                             <div className="grid grid-cols-1 gap-8 w-full max-w-5xl">
 
                               <div className="flex flex-col gap-4 bg-bg-surface-elevated/30 p-4 rounded-md border border-border-subtle">
-                                <h4 className="text-white text-sm font-medium">Session Metadata</h4>
+                                <h4 className="text-text-primary text-sm font-medium">Session Metadata</h4>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                                   <div>
                                     <p className="text-text-muted text-xs uppercase tracking-wider mb-1">Detected Activity</p>
-                                    <p className="text-status-calm font-medium">{session.context?.task === 'Take a Cognitive Quiz' && session.context?.battery ? `Diagnostic: ${session.context.battery}` : session.context?.task || session.duration}</p>
+                                    <p className="text-status-neutral font-medium">{session.context?.task === 'Take a Cognitive Quiz' && session.context?.battery ? `Diagnostic: ${session.context.battery}` : session.context?.task || session.duration}</p>
                                   </div>
                                   <div>
                                     <p className="text-text-muted text-xs uppercase tracking-wider mb-1">Prior Sleep</p>
-                                    <p className="text-white font-medium">{session.context?.sleep || 'Not Recorded'}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-text-muted text-xs uppercase tracking-wider mb-1">Self-Reported Stress</p>
-                                    <p className="text-white font-medium">{session.context?.stress || 'Not Recorded'}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-text-muted text-xs uppercase tracking-wider mb-1">Recent Caffeine</p>
-                                    <p className="text-white font-medium">{session.context?.caffeine || 'Not Recorded'}</p>
+                                    <p className="text-text-primary font-medium">{session.context?.caffeine || 'Not Recorded'}</p>
                                   </div>
                                 </div>
                               </div>
@@ -308,10 +311,10 @@ export const Analysis: React.FC = () => {
                                     <LineChart data={session.waves} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                       <XAxis dataKey="time" hide />
                                       <YAxis domain={[0, 100]} hide />
-                                      <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#27272a', borderRadius: '4px' }} labelStyle={{ display: 'none' }} />
-                                      <Line type="monotone" dataKey="alpha" stroke="#a1a1aa" strokeWidth={1} dot={false} isAnimationActive={false} />
-                                      <Line type="monotone" dataKey="beta" stroke="#fca5a5" strokeWidth={1} dot={false} isAnimationActive={false} />
-                                      <Line type="monotone" dataKey="gamma" stroke="#52525b" strokeWidth={1} dot={false} isAnimationActive={false} />
+                                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} labelStyle={{ display: 'none' }} />
+                                      <Line type="monotone" dataKey="alpha" stroke="var(--brand-primary)" strokeWidth={1} dot={false} isAnimationActive={false} />
+                                      <Line type="monotone" dataKey="beta" stroke="var(--status-stress)" strokeWidth={1} dot={false} isAnimationActive={false} />
+                                      <Line type="monotone" dataKey="gamma" stroke="var(--brand-accent)" strokeWidth={1} dot={false} isAnimationActive={false} />
                                     </LineChart>
                                   </ResponsiveContainer>
                                 </div>
@@ -327,9 +330,9 @@ export const Analysis: React.FC = () => {
                                     <AreaChart data={session.waves} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                                       <XAxis dataKey="time" hide />
                                       <YAxis domain={[0, 100]} hide />
-                                      <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', borderColor: '#27272a', borderRadius: '4px' }} labelStyle={{ display: 'none' }} />
-                                      <Area type="step" dataKey="focus" stroke="#ffffff" fillOpacity={0} isAnimationActive={false} strokeWidth={1} />
-                                      <Area type="step" dataKey="attention" stroke="#a1a1aa" fillOpacity={0.1} fill="#a1a1aa" isAnimationActive={false} strokeWidth={1} />
+                                      <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} labelStyle={{ display: 'none' }} />
+                                      <Area type="step" dataKey="focus" stroke="var(--brand-primary)" fillOpacity={0} isAnimationActive={false} strokeWidth={1} />
+                                      <Area type="step" dataKey="attention" stroke="var(--brand-secondary)" fillOpacity={0.05} fill="var(--brand-secondary)" isAnimationActive={false} strokeWidth={1} />
                                     </AreaChart>
                                   </ResponsiveContainer>
                                 </div>
