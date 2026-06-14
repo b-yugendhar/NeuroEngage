@@ -1,20 +1,13 @@
 import dns from 'dns';
-
 dns.setDefaultResultOrder('ipv4first');
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-
-// Load environment variables from .env file
 dotenv.config();
-
 const app = express();
-
-// Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
-
 // Mongoose Schemas
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -23,7 +16,6 @@ const userSchema = new mongoose.Schema({
   pairingCode: String,
   managerCode: String
 });
-
 const sessionSchema = new mongoose.Schema({
   userId: String,
   username: String,
@@ -43,14 +35,12 @@ const sessionSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 const Session = mongoose.model('Session', sessionSchema);
-
 // Auth Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, role, managerCode } = req.body;
     const existing = await User.findOne({ username });
     if (existing) return res.status(400).json({ error: 'Username already taken.' });
-
     let newPairingCode = undefined;
     if (role === 'manager') {
       newPairingCode = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -99,11 +89,9 @@ app.get('/api/sessions', async (req, res) => {
     const { userId, managerCode } = req.query;
     let filter = {};
     
-    // Strictly validate incoming tokens to prevent stringified nulls
     if (userId && userId !== 'undefined' && userId !== 'null') filter.userId = userId;
     if (managerCode && managerCode !== 'undefined' && managerCode !== 'null') filter.managerCode = managerCode;
     
-    // Security Patch: Prevent accidental full-table scans if the frontend sends empty query parameters
     if (Object.keys(filter).length === 0) {
       return res.json([]);
     }
@@ -115,20 +103,19 @@ app.get('/api/sessions', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
 // Database Initialization & Server Startup
 const seedDatabase = async () => {
   try {
     const managerExists = await User.findOne({ username: 'manager' });
     if (!managerExists) {
       await User.create({ username: 'manager', password: 'password', role: 'manager', pairingCode: 'TEST99' });
-      console.log('✅ Seeded dummy Manager account (manager / password) with code TEST99');
+      console.log('Seeded dummy Manager account (manager / password) with code TEST99');
     }
 
     const subjectExists = await User.findOne({ username: 'subject' });
     if (!subjectExists) {
       const subject = await User.create({ username: 'subject', password: 'password', role: 'subject', managerCode: 'TEST99' });
-      console.log('✅ Seeded dummy Subject account (subject / password)');
+      console.log(' Seeded dummy Subject account (subject / password)');
 
       const generateWaves = (seed) => {
         return Array.from({ length: 30 }, (_, i) => ({
@@ -165,7 +152,7 @@ const seedDatabase = async () => {
           waves: generateWaves(2)
         }
       ]);
-      console.log('✅ Seeded 2 dummy sessions for the Subject account.');
+      console.log('Seeded 2 dummy sessions for the Subject account.');
     }
   } catch (err) {
     console.error('Failed to seed database:', err);
@@ -177,7 +164,7 @@ const startServer = async () => {
     const mongoUri = process.env.MONGO_URI;
 
     if (!mongoUri || mongoUri.includes('<db_password>')) {
-      console.error('\n❌ CRITICAL DATABASE ERROR ❌');
+      console.error('\n CRITICAL DATABASE ERROR ');
       console.error('The database connection string in your .env file is missing or invalid.');
       process.exit(1);
     }
@@ -196,11 +183,10 @@ const startServer = async () => {
   }
 };
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   EEG Stress Classifier API — Dynamic endpoints
-   (Replaces the Python Flask backend from the GitHub repo,
-    generates fresh synthetic EEG data on every request)
-   ═══════════════════════════════════════════════════════════════════════════ */
+  // EEG Stress Classifier API — Dynamic endpoints
+  // (Replaces the Python Flask backend from the GitHub repo,
+   // generates fresh synthetic EEG data on every request)
+   
 const EEG_SFREQ = 128;
 const EEG_CHANNELS = ['Fp1','AF3','F7','F3','FC1','FC5','T7','C3','CP1','CP5','P7','P3',
                       'Pz','PO3','O1','Oz','O2','PO4','P4','P8','CP6','CP2','C4','T8',
@@ -315,7 +301,6 @@ app.post('/api/eeg/predict', (req, res) => {
 
 startServer();
 
-// Handle graceful shutdown
 process.on('SIGINT', async () => {
   await mongoose.disconnect();
   process.exit(0);
