@@ -305,7 +305,7 @@ export const Home: React.FC = () => {
     setLoading(true);
     setError("");
 
-    const endpoint = isRegistering ? "/api/auth/register" : "/api/auth/login";
+    const endpoint = isRegistering ? "https://neuroengage.onrender.com/api/auth/register" : "https://neuroengage.onrender.com/api/auth/login";
     const payload = isRegistering
       ? {
           username,

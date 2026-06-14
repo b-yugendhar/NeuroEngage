@@ -46,7 +46,7 @@ export const Analysis: React.FC = () => {
 
   useEffect(() => {
     const pairingCode = localStorage.getItem('neuro_pairing_code');
-    const url = isManager ? `/api/sessions?managerCode=${pairingCode}` : `/api/sessions?userId=${userId}`;
+    const url = isManager ? `https://neuroengage.onrender.com/api/sessions?managerCode=${pairingCode}` : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
     fetch(url)
       .then(res => res.json())
       .then(data => {

@@ -19,7 +19,7 @@ interface SessionRecord {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
 
   useEffect(() => {
-    const url = isManager ? `/api/sessions?managerCode=${pairingCode}` : `/api/sessions?userId=${userId}`;
+    const url = isManager ? `https://neuroengage.onrender.com/api/sessions?managerCode=${pairingCode}` : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
     fetch(url)
       .then(res => res.json())
       .then(data => {
