@@ -11,7 +11,7 @@ interface SessionRecord {
   avgStress: string;
   avgFocus: string;
   waves: { time: number; alpha: number; beta: number; gamma: number; focus: number; attention: number; }[];
-  context: Record<string, unknown>;
+  context: Record<string, any>;
 }
 
 const C_LOAD = '#ef4444';     
