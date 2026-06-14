@@ -16,15 +16,15 @@ import { motion, AnimatePresence } from "framer-motion";
 /* ── Clean Light Theme CSS ── */
 const pageStyles = `
   :root {
-    --primary: #cbc3e3;
-    --primary-light: #cbc3e3;
-    --secondary: #cbc3e3;
+    --primary: #BF77F6;
+    --primary-light: #BF77F6;
+    --secondary: #BF77F6;
     --background: #ffffff;
     --surface: #f8fafc;
     --text-main: #0f172a;
     --text-muted: #64748b;
     --border: #e2e8f0;
-    --accent: #cbc3e3;
+    --accent: #BF77F6;
   }
 
   .home-root {
@@ -82,7 +82,7 @@ const pageStyles = `
   }
 
   .btn-primary:hover {
-    background: #cbc3e3;
+    background: #BF77F6;
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2);
   }
@@ -194,7 +194,7 @@ const BRAIN_WAVES = [
     name: "Delta Waves",
     freq: "0.5–4 Hz",
     state: "Deep Sleep",
-    color: "#cbc3e3",
+    color: "#BF77F6",
     desc: "Associated with the deepest levels of relaxation and restorative, healing sleep. They are found most often in infants and young children.",
     speed: 1,
   },
@@ -203,7 +203,7 @@ const BRAIN_WAVES = [
     name: "Theta Waves",
     freq: "4–8 Hz",
     state: "Meditation / REM Sleep",
-    color: "#cbc3e3",
+    color: "#BF77F6",
     desc: "Associated with gateway to learning, memory, and intuition. In theta, our senses are withdrawn from the external world.",
     speed: 2,
   },
@@ -234,6 +234,24 @@ const BRAIN_WAVES = [
     desc: "Occur during bursts of insight and high-level information processing. They relate to the simultaneous processing of info.",
     speed: 15,
   },
+];
+
+const EXPERTS = [
+  {
+    name: "Dr. Sarah Chen",
+    role: "Neuro-Pathologist",
+    quote: "The brain is the body's most complex frontier. We are here to map it, together."
+  },
+  {
+    name: "Dr. James Wilson",
+    role: "Lead EEG Specialist",
+    quote: "True healthcare requires listening not just to words, but to neural pathways."
+  },
+  {
+    name: "Dr. Elena Rodriguez",
+    role: "Brain-Behavior Expert",
+    quote: "Healing begins when we can accurately visualize the invisible signals of stress."
+  }
 ];
 
 const BrainWaveVisualizer: React.FC<{ speed: number; color: string }> = ({
@@ -290,6 +308,7 @@ const BrainWaveVisualizer: React.FC<{ speed: number; color: string }> = ({
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const [showSplash, setShowSplash] = useState(true);
   const [activeWave, setActiveWave] = useState(BRAIN_WAVES[2]);
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState("");
@@ -298,6 +317,25 @@ export const Home: React.FC = () => {
   const [role, setRole] = useState<"patient" | "doctor">("patient");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Control Splash Screen Animation
+  useEffect(() => {
+    // Hide scrolling while splash screen is active
+    if (showSplash) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 2500); // 2.5 seconds of purple splash screen
+
+    return () => {
+      clearTimeout(timer);
+      document.body.style.overflow = "unset";
+    };
+  }, [showSplash]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,6 +379,43 @@ export const Home: React.FC = () => {
     <div className="home-root">
       <style>{pageStyles}</style>
 
+      {/* ─── CINEMATIC SPLASH SCREEN ─── */}
+      <AnimatePresence>
+        {showSplash && (
+          <motion.div
+            key="splash-screen"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1.2, ease: "easeInOut" }}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "var(--primary)",
+              zIndex: 99999,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <motion.img
+              layoutId="neural-hero-gif" // This matches the ID of the image in the hero section below!
+              src="https://cdn.dribbble.com/userupload/44366577/file/29261ea2f21de39cc959d5cd1c78c04e.gif"
+              alt="Neural Visualization Initializing"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1.5, opacity: 1 }}
+              transition={{ duration: 2, ease: "easeOut" }}
+              style={{
+                width: "40vw",
+                minWidth: "300px",
+                mixBlendMode: "multiply", // Makes the white background transparent against the purple
+                WebkitMaskImage: "radial-gradient(circle, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 75%)",
+                maskImage: "radial-gradient(circle, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 75%)",
+              }}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <nav className="nav-bar">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div
@@ -371,7 +446,7 @@ export const Home: React.FC = () => {
               fontWeight: 600,
             }}
           >
-            Services
+            Clinical Services
           </a>
           <a
             href="#brain-tutor"
@@ -381,7 +456,7 @@ export const Home: React.FC = () => {
               fontWeight: 600,
             }}
           >
-            Brain Waves
+            Your Brain Health
           </a>
           <a
             href="#experts"
@@ -391,7 +466,7 @@ export const Home: React.FC = () => {
               fontWeight: 600,
             }}
           >
-            Experts
+            Our Specialists
           </a>
           <button
             className="btn-primary"
@@ -401,14 +476,14 @@ export const Home: React.FC = () => {
                 ?.scrollIntoView({ behavior: "smooth" })
             }
           >
-            Portal Login
+            Patient / Doctor Portal
           </button>
         </div>
       </nav>
 
       <section className="section hero-section">
         <div className="hero-content">
-          <span className="badge badge-primary">Next-Gen Neuro-Engage</span>
+          <span className="badge badge-primary">Clinical-Grade Neurological Care</span>
           <h1
             style={{
               fontSize: "clamp(2.5rem, 5vw, 4rem)",
@@ -417,8 +492,8 @@ export const Home: React.FC = () => {
               marginBottom: 24,
             }}
           >
-            Unlocking the Secrets of your{" "}
-            <span style={{ color: "var(--primary)" }}>Neural Pathways</span>
+            Empowering Minds.{" "}
+            <span style={{ color: "var(--primary)" }}>Connecting Care.</span>
           </h1>
           <p
             style={{
@@ -428,22 +503,25 @@ export const Home: React.FC = () => {
               marginBottom: 40,
             }}
           >
-            Advanced EEG monitoring and cognitive assessment platform designed
-            for patients, doctors, and researchers. Understand your brain waves
-            in real-time with clinical precision.
+            Translating your brain waves into a language of healing. Advanced EEG telemetry and cognitive assessment designed to bridge the gap between neural insights and clinical action.
           </p>
           <div style={{ display: "flex", gap: 16 }}>
             <button
               className="btn-primary"
               onClick={() =>
                 document
-                  .getElementById("brain-tutor")
+                  .getElementById("auth-section")
                   ?.scrollIntoView({ behavior: "smooth" })
               }
             >
-              How it works <ArrowRight size={18} />
+              Book Consultation <ArrowRight size={18} />
             </button>
             <button
+              onClick={() =>
+                document
+                  .getElementById("services")
+                  ?.scrollIntoView({ behavior: "smooth" })
+              }
               style={{
                 background: "transparent",
                 border: "1px solid var(--border)",
@@ -453,33 +531,58 @@ export const Home: React.FC = () => {
                 cursor: "pointer",
               }}
             >
-              View Case Studies
+              Explore the Platform
             </button>
           </div>
         </div>
-        <div className="hero-visual">
-          <motion.div 
-            style={{ width: '100%', height: 'auto', borderRadius: 32, overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.8 }}
-          >
-            <img 
-              src="https://cdn.dribbble.com/userupload/44366577/file/29261ea2f21de39cc959d5cd1c78c04e.gif" 
-              alt="Neural Visualization" 
-              style={{ width: '100%', height: 'auto', display: 'block' }} 
-              onError={(e) => {
-                e.currentTarget.src = "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHR4M3NyeHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l41lTfuxs659E8JLW/giphy.gif";
+        <div className="hero-visual" style={{ position: "relative" }}>
+          {!showSplash && (
+            <motion.div
+              style={{
+                width: "120%",
+                left: "-10%",
+                position: "relative",
+                zIndex: 0,
               }}
-            />
-          </motion.div>
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, y: [0, -15, 0] }}
+              transition={{
+                y: {
+                  repeat: Infinity,
+                  duration: 6,
+                  ease: "easeInOut",
+                  delay: 1.5, // Waits for the layoutId transition to finish flying in before it starts floating
+                },
+                opacity: { duration: 0.5 },
+              }}
+            >
+              <motion.img
+                layoutId="neural-hero-gif" // This matches the Splash Screen, allowing it to fly perfectly into place!
+                src="https://cdn.dribbble.com/userupload/44366577/file/29261ea2f21de39cc959d5cd1c78c04e.gif"
+                alt="Neural Visualization"
+                transition={{ duration: 1.2, ease: "easeInOut" }}
+                style={{
+                  width: "100%",
+                  height: "auto",
+                  display: "block",
+                  mixBlendMode: "multiply",
+                  WebkitMaskImage: "radial-gradient(circle, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 75%)",
+                  maskImage: "radial-gradient(circle, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 75%)",
+                }}
+                onError={(e) => {
+                  e.currentTarget.src =
+                    "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHR4M3NyeHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4ZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l41lTfuxs659E8JLW/giphy.gif";
+                }}
+              />
+            </motion.div>
+          )}
         </div>
       </section>
 
       <section className="section" id="services">
         <div style={{ textAlign: "center", marginBottom: 60 }}>
           <h2 style={{ fontSize: 36, fontWeight: 800, marginBottom: 16 }}>
-            Comprehensive Neural Services
+            Advanced Neurological Diagnostics
           </h2>
           <p
             style={{
@@ -489,8 +592,7 @@ export const Home: React.FC = () => {
               margin: "0 auto",
             }}
           >
-            We provide a suite of tools for monitoring, analyzing, and improving
-            cognitive health.
+            From continuous EEG monitoring to ML-powered stress analysis—we empower clinical decisions and patient well-being.
           </p>
         </div>
         <div className="grid-3">
@@ -500,21 +602,20 @@ export const Home: React.FC = () => {
                 width: 48,
                 height: 48,
                 borderRadius: 12,
-                background: "#cbc3e3",
+                background: "#BF77F6",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 20,
               }}
             >
-              <Activity color="#cbc3e3" />
+              <Activity color="#BF77F6" />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
-              Real-time EEG
+              Real-time Neural Telemetry
             </h3>
             <p style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>
-              Live stream brain wave data with millisecond precision directly
-              from your wearable device.
+              Live stream brain wave data with millisecond precision directly from your wearable device into a secure clinical portal.
             </p>
           </div>
           <div className="card">
@@ -533,11 +634,10 @@ export const Home: React.FC = () => {
               <Heart color="#ef4444" />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
-              Stress Analysis
+              Cognitive Stress Profiling
             </h3>
             <p style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>
-              Identify anxiety and stress triggers through our advanced
-              ML-powered classification engine.
+              Identify subtle anxiety triggers and track mental fatigue through our advanced ML-powered classification engine.
             </p>
           </div>
           <div className="card">
@@ -556,11 +656,10 @@ export const Home: React.FC = () => {
               <Users color="#22c55e" />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
-              Clinical Collaboration
+              Seamless Doctor Collaboration
             </h3>
             <p style={{ color: "var(--text-muted)", lineHeight: 1.6 }}>
-              Connect patients and doctors in a unified workspace for better
-              diagnostic outcomes.
+              Beyond the symptoms: Connect patients and doctors in a unified workspace for holistic, data-driven diagnostic outcomes.
             </p>
           </div>
         </div>
@@ -571,12 +670,10 @@ export const Home: React.FC = () => {
           <div style={{ display: "flex", gap: 60, alignItems: "flex-start" }}>
             <div style={{ flex: 1.5 }}>
               <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>
-                The Brain Wave Tutor
+                Understand Your Cognitive Health
               </h2>
               <p style={{ color: "var(--text-muted)", marginBottom: 32 }}>
-                Understanding your brain waves is the first step to mastering
-                your cognitive health. Select a wave frequency below to learn
-                about its characteristics and state of mind.
+                Your mental well-being is no longer a guessing game. See the science behind your state of mind by exploring your neural frequencies below.
               </p>
 
               <div className="wave-selector">
@@ -612,7 +709,7 @@ export const Home: React.FC = () => {
                     fontWeight: 700,
                   }}
                 >
-                  Live Illustration
+                  Clinical Illustration
                 </div>
               </div>
 
@@ -661,7 +758,7 @@ export const Home: React.FC = () => {
                       marginBottom: 12,
                     }}
                   >
-                    Mental State: <strong>{activeWave.state}</strong>
+                    Associated Clinical State: <strong>{activeWave.state}</strong>
                   </h4>
                   <p
                     style={{
@@ -693,15 +790,15 @@ export const Home: React.FC = () => {
                   marginBottom: 20,
                 }}
               >
-                <Info color="var(--primary)" size={24} />
-                <h3 style={{ fontWeight: 700 }}>Did you know?</h3>
+                <Stethoscope color="var(--primary)" size={24} />
+                <h3 style={{ fontWeight: 700 }}>Medical Insights</h3>
               </div>
               <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                 {[
-                  "Your brain waves change based on what you're doing.",
-                  "Delta waves are most active during deep, dreamless sleep.",
-                  "Alpha waves represent the 'idling' state of the brain.",
-                  "Gamma waves are the fastest and represent complex multi-tasking.",
+                  "Your neural pathways adapt continuously to environmental stressors.",
+                  "Chronic stress can suppress Alpha wave generation.",
+                  "Delta wave abnormalities may indicate severe sleep disorders.",
+                  "Our platform analyzes these fluctuations to guide clinical interventions.",
                 ].map((item, i) => (
                   <li
                     key={i}
@@ -717,7 +814,7 @@ export const Home: React.FC = () => {
                       color="#22c55e"
                       style={{ flexShrink: 0 }}
                     />
-                    <span>{item}</span>
+                    <span style={{ lineHeight: 1.4 }}>{item}</span>
                   </li>
                 ))}
               </ul>
@@ -729,19 +826,19 @@ export const Home: React.FC = () => {
       <section className="section" id="experts">
         <div style={{ textAlign: "center", marginBottom: 60 }}>
           <h2 style={{ fontSize: 36, fontWeight: 800, marginBottom: 16 }}>
-            Leading Neurological Experts
+            Trusted Neurological Specialists
           </h2>
           <p style={{ color: "var(--text-muted)", fontSize: 18 }}>
-            Our platform is vetted by top Neuroscientists and MDs worldwide.
+            Our platform connects you with world-class medical professionals dedicated to your mental well-being.
           </p>
         </div>
         <div className="grid-3">
-          {[1, 2, 3].map((i) => (
-            <div className="card" key={i} style={{ textAlign: "center" }}>
+          {EXPERTS.map((expert, i) => (
+            <div className="card" key={i} style={{ textAlign: "center", display: "flex", flexDirection: "column" }}>
               <div
                 style={{
-                  width: 120,
-                  height: 120,
+                  width: 100,
+                  height: 100,
                   borderRadius: "50%",
                   background: "var(--surface)",
                   margin: "0 auto 24px",
@@ -750,68 +847,78 @@ export const Home: React.FC = () => {
                   justifyContent: "center",
                 }}
               >
-                <Stethoscope size={48} color="var(--primary-light)" />
+                <Stethoscope size={40} color="var(--primary-light)" />
               </div>
               <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
-                Dr. {["Sarah Chen", "James Wilson", "Elena Rodriguez"][i - 1]}
+                {expert.name}
               </h3>
               <p
                 style={{
                   color: "var(--primary)",
                   fontWeight: 600,
                   fontSize: 14,
-                  marginBottom: 16,
+                  marginBottom: 24,
                 }}
               >
-                {
-                  [
-                    "Neuro-Pathologist",
-                    "Lead EEG Specialist",
-                    "Brain-Behavior Expert",
-                  ][i - 1]
-                }
+                {expert.role}
               </p>
-              <p
+              <blockquote
                 style={{
+                  margin: "auto 0 0 0",
+                  fontStyle: "italic",
                   color: "var(--text-muted)",
-                  fontSize: 14,
-                  lineHeight: 1.5,
+                  fontSize: 15,
+                  lineHeight: 1.6,
+                  borderTop: "1px solid var(--border)",
+                  paddingTop: 20,
                 }}
               >
-                Specializing in{" "}
-                {
-                  [
-                    "neural diagnostics and clinical data analysis",
-                    "real-time biofeedback systems",
-                    "cognitive rehabilitation through neuro-tech",
-                  ][i - 1]
-                }
-                .
-              </p>
+                "{expert.quote}"
+              </blockquote>
             </div>
           ))}
         </div>
 
         <div style={{ marginTop: 80, textAlign: 'center' }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
-             <h3 style={{ fontSize: 28, fontWeight: 800 }}>Seamless Patient Experience</h3>
-             <p style={{ color: 'var(--text-muted)', maxWidth: 600 }}>See how easy it is for patients to book appointments and connect with specialists.</p>
-             <motion.div 
-               style={{ maxWidth: 800, width: '100%', borderRadius: 24, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 20px 40px rgba(0,0,0,0.05)' }}
-               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-             >
-              <video 
-                src="WomanTakesNeurologistAppointment.mp4" 
-                autoPlay 
-                loop 
-                muted 
-                playsInline
-                style={{ width: '100%', height: 'auto', display: 'block' }}
-                onError={(e) => {
-                   e.currentTarget.src = "WomanTakesNeurologistAppointment.mp4";
-                 }}
+            <h3 style={{ fontSize: 28, fontWeight: 800 }}>Bridging the Gap to Better Care</h3>
+            <p style={{ color: 'var(--text-muted)', maxWidth: 600 }}>
+              Seamlessly connect with your neurological specialist, share real-time cognitive telemetry, and manage your health from the comfort of your own home.
+            </p>
+            
+            <motion.div
+              style={{ 
+                maxWidth: 800, 
+                width: '100%', 
+                position: 'relative', 
+                zIndex: 0 
+              }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1, y: [0, -15, 0] }} 
+              viewport={{ once: true }}
+              transition={{ 
+                duration: 1.2, 
+                y: { 
+                  repeat: Infinity, 
+                  duration: 6, 
+                  ease: "easeInOut" 
+                }
+              }}
+            >
+              <img
+                src="https://drparagagarwal.co.in/wp-content/uploads/2022/05/24867-online-doctor-app.gif"
+                alt="Seamless Patient Experience"
+                style={{ 
+                  width: '60%', 
+                  height: 'auto', 
+                  display: 'block',
+                  margin: '0 auto',
+                  mixBlendMode: 'multiply',
+                  WebkitMaskImage: 'radial-gradient(circle, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 80%)',
+                  maskImage: 'radial-gradient(circle, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 80%)'
+                }}
               />
-             </motion.div>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -823,8 +930,8 @@ export const Home: React.FC = () => {
         >
           <div style={{ flex: 1 }}>
             <h2 style={{ fontSize: 48, fontWeight: 900, marginBottom: 24 }}>
-              Ready to begin your{" "}
-              <span style={{ color: "var(--primary)" }}>Journey?</span>
+              Take Control of Your <br/>
+              <span style={{ color: "var(--primary)" }}>Cognitive Health</span>
             </h2>
             <p
               style={{
@@ -834,8 +941,7 @@ export const Home: React.FC = () => {
                 marginBottom: 32,
               }}
             >
-              Join thousands of users who are already monitoring their cognitive
-              health with NeuroEngage.
+              Every wave tells a story. Join our secure platform to monitor your neural data, connect with your doctor, or manage your clinical practice.
             </p>
             <div
               style={{
@@ -858,7 +964,7 @@ export const Home: React.FC = () => {
               </div>
               <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 <CheckCircle2 color="#22c55e" size={20} />
-                <span style={{ fontWeight: 600 }}>Secure Data</span>
+                <span style={{ fontWeight: 600 }}>Secure Data Encryption</span>
               </div>
             </div>
           </div>
@@ -876,7 +982,7 @@ export const Home: React.FC = () => {
                 <h2
                   style={{ fontSize: 28, fontWeight: 800, margin: "0 0 8px" }}
                 >
-                  {isRegistering ? "Create Account" : "Welcome Back"}
+                  {isRegistering ? "Create Patient/Provider Account" : "Access Clinical Portal"}
                 </h2>
                 <p
                   style={{
@@ -886,8 +992,8 @@ export const Home: React.FC = () => {
                   }}
                 >
                   {isRegistering
-                    ? "Register to start monitoring your brain health."
-                    : "Sign in to access your telemetry dashboard."}
+                    ? "Register to connect with your specialist or patients."
+                    : "Sign in to access your secure telemetry dashboard."}
                 </p>
               </div>
 
@@ -1019,7 +1125,7 @@ export const Home: React.FC = () => {
                         display: "block",
                       }}
                     >
-                      Doctor's Pairing Code
+                      Doctor's Clinical Pairing Code
                     </label>
                     <input
                       className="login-input"
@@ -1068,9 +1174,9 @@ export const Home: React.FC = () => {
                   {loading ? (
                     <Loader2 className="animate-spin" size={20} />
                   ) : isRegistering ? (
-                    "Create Account"
+                    "Register Profile"
                   ) : (
-                    "Sign In"
+                    "Enter Secure Portal"
                   )}
                 </button>
 
@@ -1094,7 +1200,7 @@ export const Home: React.FC = () => {
                   >
                     {isRegistering
                       ? "Already have an account? Sign In"
-                      : "Don't have an account? Register as Doctor/Patient"}
+                      : "New Patient or Doctor? Register Here"}
                   </button>
                 </div>
               </form>
@@ -1130,8 +1236,9 @@ export const Home: React.FC = () => {
               NeuroEngage
             </span>
           </div>
-          <p style={{ color: "var(--text-muted)" }}>
-            © 2026 NeuroEngage Labs. All rights reserved.
+          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
+            © 2026 NeuroEngage Clinical Systems. All rights reserved. <br/>
+            <span style={{ fontSize: 12, opacity: 0.7 }}>Not intended to replace emergency medical services.</span>
           </p>
         </div>
       </footer>

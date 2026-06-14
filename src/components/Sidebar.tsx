@@ -28,7 +28,7 @@ export const Sidebar: React.FC = () => {
     <aside style={{ width: 256, height: '100vh', position: 'fixed', left: 0, top: 0, display: 'flex', flexDirection: 'column', background: 'var(--bg-surface)', borderRight: '1px solid var(--border-subtle)' }}>
       <div className="p-8 flex flex-col gap-1">
         <div className="flex items-center gap-3 mb-2">
-          <div style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #cbc3e3, #cbc3e3)', boxShadow: '0 0 12px rgba(99,102,241,0.3)' }}>
+          <div style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #BF77F6, #BF77F6)', boxShadow: '0 0 12px rgba(99,102,241,0.3)' }}>
             <Brain size={16} color="white" />
           </div>
           <h1 className="text-lg font-bold tracking-tight text-text-primary">NeuroEngage</h1>
