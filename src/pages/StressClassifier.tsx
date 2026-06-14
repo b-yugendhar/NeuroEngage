@@ -7,7 +7,7 @@ import React from 'react';
 export const StressClassifier: React.FC = () => {
   return (
     <iframe
-     src="/ml"
+     src="https://neuroengage-1.onrender.com"
       title="EEG Stress Classifier"
       style={{
         width: '100%',
