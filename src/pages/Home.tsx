@@ -181,9 +181,23 @@ const pageStyles = `
   .badge-primary { background: rgba(79, 70, 229, 0.1); color: var(--primary); }
 
   @media (max-width: 1024px) {
-    .hero-section { flex-direction: column; text-align: center; padding-top: 120px; }
-    .hero-visual { width: 100%; }
+    .hero-section { 
+      flex-direction: column; 
+      text-align: center; 
+      padding-top: 120px; 
+      min-height: auto; /* Removes the massive vertical stretch */
+      gap: 10px; /* Pulls the image closer to the text */
+      padding-bottom: 40px;
+    }
+    .hero-content, .hero-visual { 
+      flex: none; /* Stops them from splitting the screen height 50/50 */
+      width: 100%; 
+    }
     .nav-bar { padding: 0 20px; }
+    .hero-buttons {
+      justify-content: center; /* Centers the buttons on mobile */
+      flex-wrap: wrap; /* Allows buttons to wrap on very small screens */
+    }
   }
 `;
 
@@ -436,7 +450,7 @@ export const Home: React.FC = () => {
             NeuroEngage
           </span>
         </div>
-        <div style={{ display: "flex", gap: 32, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 32, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
           <a
             href="#services"
             style={{
@@ -504,7 +518,7 @@ export const Home: React.FC = () => {
           >
             Translating your brain waves into a language of healing. Advanced EEG telemetry and cognitive assessment designed to bridge the gap between neural insights and clinical action.
           </p>
-          <div style={{ display: "flex", gap: 16 }}>
+          <div className="hero-buttons" style={{ display: "flex", gap: 16 }}>
             <button
               className="btn-primary"
               onClick={() =>
@@ -666,8 +680,8 @@ export const Home: React.FC = () => {
 
       <section className="section" id="brain-tutor">
         <div className="brain-wave-tutor">
-          <div style={{ display: "flex", gap: 60, alignItems: "flex-start" }}>
-            <div style={{ flex: 1.5 }}>
+          <div style={{ display: "flex", gap: 60, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 400px" }}>
               <h2 style={{ fontSize: 32, fontWeight: 800, marginBottom: 16 }}>
                 Understand Your Cognitive Health
               </h2>
@@ -774,7 +788,7 @@ export const Home: React.FC = () => {
 
             <div
               style={{
-                flex: 1,
+                flex: "1 1 300px",
                 padding: 32,
                 background: "white",
                 border: "1px solid var(--border)",
@@ -925,9 +939,9 @@ export const Home: React.FC = () => {
       <section className="login-container" id="auth-section">
         <div
           className="section"
-          style={{ display: "flex", gap: 100, alignItems: "center" }}
+          style={{ display: "flex", gap: 100, alignItems: "center", flexWrap: "wrap" }}
         >
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: "1 1 400px" }}>
             <h2 style={{ fontSize: 48, fontWeight: 900, marginBottom: 24 }}>
               Take Control of Your <br/>
               <span style={{ color: "var(--primary)" }}>Cognitive Health</span>
@@ -945,7 +959,7 @@ export const Home: React.FC = () => {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
                 gap: 20,
               }}
             >
@@ -968,7 +982,7 @@ export const Home: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ flex: 1, maxWidth: 460 }}>
+          <div style={{ flex: "1 1 400px", maxWidth: 460, margin: "0 auto" }}>
             <div
               className="card"
               style={{
@@ -1221,6 +1235,8 @@ export const Home: React.FC = () => {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            flexWrap: "wrap",
+            gap: 20
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
