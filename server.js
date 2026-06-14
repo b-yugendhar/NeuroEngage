@@ -12,14 +12,14 @@ app.use(express.json({ limit: '50mb' }));
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['subject', 'manager'], default: 'subject' },
+  role: { type: String, enum: ['patient', 'doctor'], default: 'patient' },
   pairingCode: String,
-  managerCode: String
+  doctorCode: String
 });
 const sessionSchema = new mongoose.Schema({
   userId: String,
   username: String,
-  managerCode: String,
+  doctorCode: String,
   date: { type: Date, default: Date.now },
   duration: String,
   avgStress: String,
@@ -38,21 +38,21 @@ const Session = mongoose.model('Session', sessionSchema);
 // Auth Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, password, role, managerCode } = req.body;
+    const { username, password, role, doctorCode } = req.body;
     const existing = await User.findOne({ username });
     if (existing) return res.status(400).json({ error: 'Username already taken.' });
     let newPairingCode = undefined;
-    if (role === 'manager') {
+    if (role === 'doctor') {
       newPairingCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    } else if (role === 'subject') {
-      if (!managerCode) return res.status(400).json({ error: 'Manager Pairing Code is required for subjects.' });
-      const managerCheck = await User.findOne({ pairingCode: managerCode, role: 'manager' });
-      if (!managerCheck) return res.status(400).json({ error: 'Invalid Pairing Code. No matching manager found.' });
+    } else if (role === 'patient') {
+      if (!doctorCode) return res.status(400).json({ error: 'Doctor Pairing Code is required for patients.' });
+      const doctorCheck = await User.findOne({ pairingCode: doctorCode, role: 'doctor' });
+      if (!doctorCheck) return res.status(400).json({ error: 'Invalid Pairing Code. No matching doctor found.' });
     }
 
-    const user = new User({ username, password, role, pairingCode: newPairingCode, managerCode });
+    const user = new User({ username, password, role, pairingCode: newPairingCode, doctorCode });
     await user.save();
-    res.status(201).json({ userId: user._id, username: user.username, role: user.role, pairingCode: user.pairingCode, managerCode: user.managerCode });
+    res.status(201).json({ userId: user._id, username: user.username, role: user.role, pairingCode: user.pairingCode, doctorCode: user.doctorCode });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: error.message });
@@ -65,7 +65,7 @@ app.post('/api/auth/login', async (req, res) => {
     const user = await User.findOne({ username, password });
     if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
 
-    res.status(200).json({ userId: user._id, username: user.username, role: user.role, pairingCode: user.pairingCode, managerCode: user.managerCode });
+    res.status(200).json({ userId: user._id, username: user.username, role: user.role, pairingCode: user.pairingCode, doctorCode: user.doctorCode });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: error.message });
@@ -86,11 +86,11 @@ app.post('/api/sessions', async (req, res) => {
 
 app.get('/api/sessions', async (req, res) => {
   try {
-    const { userId, managerCode } = req.query;
+    const { userId, doctorCode } = req.query;
     let filter = {};
     
     if (userId && userId !== 'undefined' && userId !== 'null') filter.userId = userId;
-    if (managerCode && managerCode !== 'undefined' && managerCode !== 'null') filter.managerCode = managerCode;
+    if (doctorCode && doctorCode !== 'undefined' && doctorCode !== 'null') filter.doctorCode = doctorCode;
     
     if (Object.keys(filter).length === 0) {
       return res.json([]);
@@ -106,16 +106,16 @@ app.get('/api/sessions', async (req, res) => {
 // Database Initialization & Server Startup
 const seedDatabase = async () => {
   try {
-    const managerExists = await User.findOne({ username: 'manager' });
-    if (!managerExists) {
-      await User.create({ username: 'manager', password: 'password', role: 'manager', pairingCode: 'TEST99' });
-      console.log('Seeded dummy Manager account (manager / password) with code TEST99');
+    const doctorExists = await User.findOne({ username: 'doctor' });
+    if (!doctorExists) {
+      await User.create({ username: 'doctor', password: 'password', role: 'doctor', pairingCode: 'TEST99' });
+      console.log('Seeded dummy Doctor account (doctor / password) with code TEST99');
     }
 
-    const subjectExists = await User.findOne({ username: 'subject' });
-    if (!subjectExists) {
-      const subject = await User.create({ username: 'subject', password: 'password', role: 'subject', managerCode: 'TEST99' });
-      console.log(' Seeded dummy Subject account (subject / password)');
+    const patientExists = await User.findOne({ username: 'patient' });
+    if (!patientExists) {
+      const patient = await User.create({ username: 'patient', password: 'password', role: 'patient', doctorCode: 'TEST99' });
+      console.log(' Seeded dummy Patient account (patient / password)');
 
       const generateWaves = (seed) => {
         return Array.from({ length: 30 }, (_, i) => ({
@@ -130,9 +130,9 @@ const seedDatabase = async () => {
 
       await Session.insertMany([
         {
-          userId: subject._id,
-          username: 'subject',
-          managerCode: 'TEST99',
+          userId: patient._id,
+          username: 'patient',
+          doctorCode: 'TEST99',
           date: new Date(Date.now() - 86400000 * 1),
           duration: '45m',
           avgStress: 'High',
@@ -141,9 +141,9 @@ const seedDatabase = async () => {
           waves: generateWaves(1)
         },
         {
-          userId: subject._id,
-          username: 'subject',
-          managerCode: 'TEST99',
+          userId: patient._id,
+          username: 'patient',
+          doctorCode: 'TEST99',
           date: new Date(Date.now() - 86400000 * 2),
           duration: '1h 10m',
           avgStress: 'Neutral',
@@ -152,7 +152,7 @@ const seedDatabase = async () => {
           waves: generateWaves(2)
         }
       ]);
-      console.log('Seeded 2 dummy sessions for the Subject account.');
+      console.log('Seeded 2 dummy sessions for the Patient account.');
     }
   } catch (err) {
     console.error('Failed to seed database:', err);
@@ -222,7 +222,7 @@ function synthesizeWaveform(bandPowers, nPoints = 256) {
 
 // Generate a fresh, unique EEG sample on each call
 function generateEEGSample() {
-  const subject = Math.floor(Math.random() * 40) + 1;
+  const patient = Math.floor(Math.random() * 40) + 1;
   const trial = Math.floor(Math.random() * 3) + 1;
   const epoch = Math.floor(Math.random() * 60);
   const isStressed = Math.random() > 0.45;
@@ -245,7 +245,7 @@ function generateEEGSample() {
   }
 
   return {
-    sid, subject, trial, epoch,
+    sid, patient, trial, epoch,
     true_label: isStressed ? 1 : 0,
     true_label_text: isStressed ? 'Stressed' : 'Relaxed',
     waveforms,
@@ -273,7 +273,7 @@ app.get('/api/eeg/sample', (req, res) => {
 
 // Classify a sample — dynamic prediction based on selected model
 app.post('/api/eeg/predict', (req, res) => {
-  const { subject, trial, epoch, model: modelName, true_label } = req.body;
+  const { patient, trial, epoch, model: modelName, true_label } = req.body;
   if (!modelName || !EEG_MODELS[modelName]) {
     return res.status(400).json({ error: `Model '${modelName}' is not available.` });
   }
@@ -295,7 +295,7 @@ app.post('/api/eeg/predict', (req, res) => {
     correct:         predicted === trueLabel,
     model:           modelName,
     accuracy:        `${modelInfo.accuracy}%`,
-    sample_info:     { subject, trial, epoch },
+    sample_info:     { patient, trial, epoch },
   });
 });
 

@@ -5,7 +5,7 @@ import { cn } from '../utils/cn';
 
 export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
-  const role = localStorage.getItem('neuro_role') || 'manager';
+  const role = localStorage.getItem('neuro_role') || 'doctor';
 
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -14,12 +14,12 @@ export const Sidebar: React.FC = () => {
   };
 
   const allNavItems = [
-    { icon: Disc, label: 'Patient Dashboard', path: '/dashboard', roles: ['manager', 'subject'] },
-    { icon: Activity, label: 'Clinical Monitor', path: '/eeg', roles: ['manager', 'subject'] },
-    { icon: Brain, label: 'Diagnostic Reports', path: '/analysis', roles: ['manager', 'subject'] },
-    { icon: User, label: 'Patient Registry', path: '/patients', roles: ['manager'] },
-    { icon: Zap, label: 'Assessment AI', path: '/stress-classifier', roles: ['manager', 'subject'] },
-    { icon: Settings, label: 'Portal Settings', path: '/settings', roles: ['manager', 'subject'] },
+    { icon: Disc, label: 'Patient Dashboard', path: '/dashboard', roles: ['doctor', 'patient'] },
+    { icon: Activity, label: 'Clinical Monitor', path: '/eeg', roles: ['doctor', 'patient'] },
+    { icon: Brain, label: 'Diagnostic Reports', path: '/analysis', roles: ['doctor', 'patient'] },
+    { icon: User, label: 'Patient Registry', path: '/patients', roles: ['doctor'] },
+    { icon: Zap, label: 'Assessment AI', path: '/stress-classifier', roles: ['doctor', 'patient'] },
+    { icon: Settings, label: 'Portal Settings', path: '/settings', roles: ['doctor', 'patient'] },
   ];
 
   const filteredNavItems = allNavItems.filter(item => item.roles.includes(role));
@@ -34,7 +34,7 @@ export const Sidebar: React.FC = () => {
           <h1 className="text-lg font-bold tracking-tight text-text-primary">NeuroEngage</h1>
         </div>
         <span className="text-[10px] uppercase tracking-widest text-text-muted font-medium ml-9">
-          {role === 'manager' ? 'Practitioner View' : 'Patient View'}
+          {role === 'doctor' ? 'Practitioner View' : 'Patient View'}
         </span>
       </div>
 

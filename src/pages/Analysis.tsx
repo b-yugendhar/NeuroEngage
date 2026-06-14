@@ -35,9 +35,9 @@ const generateSessionWaves = (seed: number) => {
 // Removed static initialSessions array
 
 export const Analysis: React.FC = () => {
-  const role = localStorage.getItem('neuro_role') || 'manager';
+  const role = localStorage.getItem('neuro_role') || 'doctor';
   const userId = localStorage.getItem('neuro_user') || '';
-  const isManager = role === 'manager';
+  const isDoctor = role === 'doctor';
 
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export const Analysis: React.FC = () => {
 
   useEffect(() => {
     const pairingCode = localStorage.getItem('neuro_pairing_code');
-    const url = isManager ? `https://neuroengage.onrender.com/api/sessions?managerCode=${pairingCode}` : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
+    const url = isDoctor ? `https://neuroengage.onrender.com/api/sessions?doctorCode=${pairingCode}` : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
     fetch(url)
       .then(res => res.json())
       .then(data => {
@@ -64,7 +64,7 @@ export const Analysis: React.FC = () => {
         }
       })
       .catch(err => console.error('Failed to fetch from MongoDB:', err));
-  }, [isManager, userId]);
+  }, [isDoctor, userId]);
 
   const toggleDetails = (id: string) => {
     setExpandedId(expandedId === id ? null : id);
@@ -132,7 +132,7 @@ export const Analysis: React.FC = () => {
       <header className="flex justify-between items-end border-b border-border-subtle pb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-1">
-             {isManager ? 'Diagnostic Report Library' : 'My Clinical Reports'}
+             {isDoctor ? 'Diagnostic Report Library' : 'My Clinical Reports'}
           </h1>
           <p className="text-text-secondary text-sm">Review historical baselines, detailed brainwave patterns, and patient diagnostic records.</p>
         </div>

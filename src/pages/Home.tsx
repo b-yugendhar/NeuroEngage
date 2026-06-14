@@ -294,8 +294,8 @@ export const Home: React.FC = () => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [managerCode, setManagerCode] = useState("");
-  const [role, setRole] = useState<"subject" | "manager">("subject");
+  const [doctorCode, setDoctorCode] = useState("");
+  const [role, setRole] = useState<"patient" | "doctor">("patient");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -311,7 +311,7 @@ export const Home: React.FC = () => {
           username,
           password,
           role,
-          managerCode: role === "subject" ? managerCode : undefined,
+          doctorCode: role === "patient" ? doctorCode : undefined,
         }
       : { username, password };
 
@@ -329,7 +329,7 @@ export const Home: React.FC = () => {
       localStorage.setItem("neuro_username", data.username);
       localStorage.setItem("neuro_role", data.role);
       localStorage.setItem("neuro_pairing_code", data.pairingCode || "");
-      localStorage.setItem("neuro_manager_code", data.managerCode || "");
+      localStorage.setItem("neuro_doctor_code", data.doctorCode || "");
       navigate("/dashboard");
     } catch (err: any) {
       setError(err.message || "Authentication failed");
@@ -960,7 +960,7 @@ export const Home: React.FC = () => {
                     >
                       <button
                         type="button"
-                        onClick={() => setRole("subject")}
+                        onClick={() => setRole("patient")}
                         disabled={loading}
                         style={{
                           flex: 1,
@@ -969,10 +969,10 @@ export const Home: React.FC = () => {
                           border: "none",
                           cursor: "pointer",
                           background:
-                            role === "subject" ? "white" : "transparent",
-                          fontWeight: role === "subject" ? 700 : 500,
+                            role === "patient" ? "white" : "transparent",
+                          fontWeight: role === "patient" ? 700 : 500,
                           boxShadow:
-                            role === "subject"
+                            role === "patient"
                               ? "0 2px 4px rgba(0,0,0,0.05)"
                               : "none",
                         }}
@@ -982,8 +982,8 @@ export const Home: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          setRole("manager");
-                          setManagerCode("");
+                          setRole("doctor");
+                          setDoctorCode("");
                         }}
                         disabled={loading}
                         style={{
@@ -993,10 +993,10 @@ export const Home: React.FC = () => {
                           border: "none",
                           cursor: "pointer",
                           background:
-                            role === "manager" ? "white" : "transparent",
-                          fontWeight: role === "manager" ? 700 : 500,
+                            role === "doctor" ? "white" : "transparent",
+                          fontWeight: role === "doctor" ? 700 : 500,
                           boxShadow:
-                            role === "manager"
+                            role === "doctor"
                               ? "0 2px 4px rgba(0,0,0,0.05)"
                               : "none",
                         }}
@@ -1007,7 +1007,7 @@ export const Home: React.FC = () => {
                   </div>
                 )}
 
-                {isRegistering && role === "subject" && (
+                {isRegistering && role === "patient" && (
                   <div>
                     <label
                       style={{
@@ -1025,9 +1025,9 @@ export const Home: React.FC = () => {
                       className="login-input"
                       type="text"
                       placeholder="6-DIGIT CODE"
-                      value={managerCode}
+                      value={doctorCode}
                       onChange={(e) =>
-                        setManagerCode(e.target.value.toUpperCase())
+                        setDoctorCode(e.target.value.toUpperCase())
                       }
                       disabled={loading}
                       style={{

@@ -25,12 +25,12 @@ export const Patients: React.FC = () => {
   const [patientsList, setPatientsList] = useState<{ name: string, id: string, stressLevel: string, focus: string, status: string, history: { day: string, load: number, focus: number, attention: number }[] }[]>([]);
 
   useEffect(() => {
-    const role = localStorage.getItem('neuro_role') || 'manager';
-    const isManager = role === 'manager';
+    const role = localStorage.getItem('neuro_role') || 'doctor';
+    const isDoctor = role === 'doctor';
     const pairingCode = localStorage.getItem('neuro_pairing_code');
     const userId = localStorage.getItem('neuro_user');
 
-    const url = isManager ? `https://neuroengage.onrender.com/api/sessions?managerCode=${pairingCode}` : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
+    const url = isDoctor ? `https://neuroengage.onrender.com/api/sessions?doctorCode=${pairingCode}` : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
     
     fetch(url)
       .then(res => res.json())

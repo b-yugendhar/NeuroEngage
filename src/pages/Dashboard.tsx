@@ -5,8 +5,8 @@ import { Users, TrendingUp, AlertTriangle, Copy, Activity } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const Dashboard: React.FC = () => {
-  const role = localStorage.getItem('neuro_role') || 'manager';
-  const isManager = role === 'manager';
+  const role = localStorage.getItem('neuro_role') || 'doctor';
+  const isDoctor = role === 'doctor';
   const pairingCode = localStorage.getItem('neuro_pairing_code');
   const userId = localStorage.getItem('neuro_user');
 
@@ -19,14 +19,14 @@ interface SessionRecord {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
 
   useEffect(() => {
-    const url = isManager ? `https://neuroengage.onrender.com/api/sessions?managerCode=${pairingCode}` : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
+    const url = isDoctor ? `https://neuroengage.onrender.com/api/sessions?doctorCode=${pairingCode}` : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
     fetch(url)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setSessions(data);
       })
       .catch(err => console.error('Dashboard fetch error:', err));
-  }, [isManager, pairingCode, userId]);
+  }, [isDoctor, pairingCode, userId]);
 
   const totalSessions = sessions.length;
   const highStressCount = sessions.filter(s => s.avgStress === 'High').length;
@@ -54,7 +54,7 @@ interface SessionRecord {
           <p className="text-text-secondary text-sm">Real-time patient health metrics and diagnostic system status.</p>
         </div>
 
-        {isManager && (
+        {isDoctor && (
           <div className="flex items-center gap-3 px-4 py-2 rounded-md" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-highlight)', borderRadius: 10 }}>
             <div className="flex flex-col">
               <span className="text-[10px] uppercase text-text-muted font-medium tracking-wider">Your Pairing Code</span>
@@ -78,7 +78,7 @@ interface SessionRecord {
               </div>
               <div className="flex flex-col">
                 <p className="text-text-muted text-xs uppercase tracking-wider mb-1">
-                  {isManager ? 'Total Patient Sessions' : 'Total Sessions'}
+                  {isDoctor ? 'Total Patient Sessions' : 'Total Sessions'}
                 </p>
                 <h3 className="text-2xl font-bold text-text-primary tracking-tight">
                   {totalSessions}
@@ -96,7 +96,7 @@ interface SessionRecord {
               </div>
               <div className="flex flex-col">
                 <p className="text-text-muted text-xs uppercase tracking-wider mb-1">
-                  {isManager ? 'Avg Engagement' : 'Patient Focus Score'}
+                  {isDoctor ? 'Avg Engagement' : 'Patient Focus Score'}
                 </p>
                 <h3 className="text-2xl font-bold text-text-primary tracking-tight">
                   {avgFocusScore}%
@@ -114,7 +114,7 @@ interface SessionRecord {
               </div>
               <div className="flex flex-col">
                 <p className="text-text-muted text-xs uppercase tracking-wider mb-1">
-                  {isManager ? 'Critical Stress Alerts' : 'Stress Events'}
+                  {isDoctor ? 'Critical Stress Alerts' : 'Stress Events'}
                 </p>
                 <h3 className="text-2xl font-bold text-text-primary tracking-tight">
                   {highStressCount}
@@ -132,7 +132,7 @@ interface SessionRecord {
               </div>
               <div className="flex flex-col">
                 <p className="text-text-muted text-xs uppercase tracking-wider mb-1">Current State</p>
-                <h3 className={`text-2xl font-bold tracking-tight ${totalSessions === 0 ? 'text-text-muted' : (isManager ? 'text-status-calm' : 'text-text-primary')}`}>
+                <h3 className={`text-2xl font-bold tracking-tight ${totalSessions === 0 ? 'text-text-muted' : (isDoctor ? 'text-status-calm' : 'text-text-primary')}`}>
                   {totalSessions === 0 ? 'No Data' : 'Active'}
                 </h3>
               </div>
@@ -146,7 +146,7 @@ interface SessionRecord {
         <Card className="mt-2">
           <CardHeader className="border-border-subtle">
             <CardTitle className="text-sm font-medium text-text-secondary">
-              {isManager ? 'Weekly Aggregated Stress Index vs. Cognitive Focus' : 'Weekly Patient Focus Timeline'}
+              {isDoctor ? 'Weekly Aggregated Stress Index vs. Cognitive Focus' : 'Weekly Patient Focus Timeline'}
             </CardTitle>
           </CardHeader>
           <CardContent className="h-80 pt-6 border-t border-border-subtle">

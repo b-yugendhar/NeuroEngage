@@ -37,7 +37,7 @@ const COGNITIVE_TESTS: Record<string, { q: string, options: string[] }[]> = {
   ],
   "Real Life Scenarios": [
     { q: "You realize you forgot your wallet at the grocery checkout. What do you do?", options: ["Ask to hold the items while you return", "Put everything back silently", "Ask if they accept digital pay", "Panic and leave the store"] },
-    { q: "A colleague takes credit for your work. How do you respond?", options: ["Confront them privately", "Call them out publicly", "Inform your manager", "Let it go to avoid conflict"] },
+    { q: "A colleague takes credit for your work. How do you respond?", options: ["Confront them privately", "Call them out publicly", "Inform your doctor", "Let it go to avoid conflict"] },
     { q: "You accidentally scratch a parked car. No one saw.", options: ["Leave a note with your number", "Drive away immediately", "Wait for the owner", "Call the police"] },
     { q: "Your flight gets cancelled 2 hours before takeoff.", options: ["Demand a refund immediately", "Quickly rebook the next available flight", "Wait for airline instructions", "Give up and go home"] },
     { q: "A friend borrows money and forgets to pay it back.", options: ["Remind them directly", "Drop subtle hints", "Write it off as a loss", "Wait for them to remember"] },
@@ -73,7 +73,7 @@ const COGNITIVE_TESTS: Record<string, { q: string, options: string[] }[]> = {
   ],
   "Critical Thinking": [
     { q: "If A implies B, and B implies C, does not C imply not A?", options: ["Yes (Modus Tollens)", "No", "Sometimes", "Only in mathematics"] },
-    { q: "Why is correlation not causation?", options: ["A third variable could cause both", "Math is subjective", "Statistics are flawed", "It is causation if the p-value is low"] },
+    { q: "Why is correlation not causation?", options: ["A third variable could cause both", "Math is patientive", "Statistics are flawed", "It is causation if the p-value is low"] },
     { q: "Which argument is a 'Straw Man' fallacy?", options: ["Misrepresenting an opponent's argument to easily defeat it", "Attacking the person instead of the argument", "Assuming something is true because everyone thinks so", "Using a celebrity endorsement"] },
     { q: "Is it possible for a statement to be neither true nor false?", options: ["Yes, paradoxes like 'This statement is false'", "No, logic is binary", "Only in philosophy", "Only if it's a question"] },
     { q: "If everyone claims a specific diet works, what is the best cognitive approach?", options: ["Look for blinded studies", "Try it yourself immediately", "Assume it's a scam", "Trust the majority"] },
@@ -928,8 +928,8 @@ export const LiveEEG: React.FC = () => {
           <Button className="h-8 py-0 text-xs px-3 transition-opacity hover:opacity-80" style={{ backgroundColor: 'transparent', color: '#fca5a5', border: '1px solid rgba(252,165,165,0.4)', boxShadow: '0 0 15px rgba(252,165,165,0.1)' }} onClick={async () => {
             const payload = {
               userId: localStorage.getItem('neuro_user') || 'Admin',
-              username: localStorage.getItem('neuro_username') || 'Unknown Subject',
-              managerCode: localStorage.getItem('neuro_manager_code') || '',
+              username: localStorage.getItem('neuro_username') || 'Unknown Patient',
+              doctorCode: localStorage.getItem('neuro_doctor_code') || '',
               date: new Date(),
               duration: 'Live Session',
               avgStress: sessionAvgBeta > 22 ? 'High' : sessionAvgBeta > 18 ? 'Elevated' : 'Neutral',
