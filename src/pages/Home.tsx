@@ -9,7 +9,6 @@ import {
   Heart,
   CheckCircle2,
   ArrowRight,
-  Info,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
