@@ -16,15 +16,15 @@ import { motion, AnimatePresence } from "framer-motion";
 /* ── Clean Light Theme CSS ── */
 const pageStyles = `
   :root {
-    --primary: #4f46e5;
-    --primary-light: #818cf8;
-    --secondary: #7c3aed;
+    --primary: #cbc3e3;
+    --primary-light: #cbc3e3;
+    --secondary: #cbc3e3;
     --background: #ffffff;
     --surface: #f8fafc;
     --text-main: #0f172a;
     --text-muted: #64748b;
     --border: #e2e8f0;
-    --accent: #38bdf8;
+    --accent: #cbc3e3;
   }
 
   .home-root {
@@ -82,7 +82,7 @@ const pageStyles = `
   }
 
   .btn-primary:hover {
-    background: #4338ca;
+    background: #cbc3e3;
     transform: translateY(-2px);
     box-shadow: 0 10px 20px rgba(79, 70, 229, 0.2);
   }
@@ -194,7 +194,7 @@ const BRAIN_WAVES = [
     name: "Delta Waves",
     freq: "0.5–4 Hz",
     state: "Deep Sleep",
-    color: "#3b82f6",
+    color: "#cbc3e3",
     desc: "Associated with the deepest levels of relaxation and restorative, healing sleep. They are found most often in infants and young children.",
     speed: 1,
   },
@@ -203,7 +203,7 @@ const BRAIN_WAVES = [
     name: "Theta Waves",
     freq: "4–8 Hz",
     state: "Meditation / REM Sleep",
-    color: "#8b5cf6",
+    color: "#cbc3e3",
     desc: "Associated with gateway to learning, memory, and intuition. In theta, our senses are withdrawn from the external world.",
     speed: 2,
   },
@@ -500,14 +500,14 @@ export const Home: React.FC = () => {
                 width: 48,
                 height: 48,
                 borderRadius: 12,
-                background: "#eff6ff",
+                background: "#cbc3e3",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 20,
               }}
             >
-              <Activity color="#3b82f6" />
+              <Activity color="#cbc3e3" />
             </div>
             <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>
               Real-time EEG

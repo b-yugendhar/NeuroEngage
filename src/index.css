@@ -7,9 +7,9 @@
   --bg-surface-elevated: #f1f5f9;
   
   /* Indigo-Purple Accent System (Adjusted for Light) */
-  --brand-primary: #4f46e5;
+  --brand-primary: #cbc3e3;
   --brand-secondary: #64748b;
-  --brand-accent: #7c3aed;
+  --brand-accent: #cbc3e3;
   
   --text-primary: #0f172a;
   --text-secondary: #475569;
@@ -18,7 +18,7 @@
   /* Status Colors (Adjusted for Light) */
   --status-stress: #ef4444; 
   --status-calm: #10b981; 
-  --status-neutral: #3b82f6; 
+  --status-neutral: #cbc3e3; 
   --status-anxious: #eab308; 
   
   /* Borders — subtle light edges */
@@ -91,14 +91,14 @@ a:hover {
 
 /* Gradient Text */
 .text-gradient {
-  background: linear-gradient(135deg, #818cf8, #c084fc);
+  background: linear-gradient(135deg, #cbc3e3, #cbc3e3);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .bg-gradient-primary {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #cbc3e3, #cbc3e3);
   color: #ffffff;
 }
 

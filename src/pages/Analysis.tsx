@@ -15,8 +15,8 @@ interface SessionRecord {
 }
 
 const C_LOAD = '#ef4444';     
-const C_FOCUS = '#3b82f6';    
-const C_ATTENTION = '#8b5cf6'; 
+const C_FOCUS = '#cbc3e3';    
+const C_ATTENTION = '#cbc3e3'; 
 
 // Removed static monthlyData array
 
