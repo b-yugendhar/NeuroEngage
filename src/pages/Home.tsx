@@ -248,23 +248,6 @@ const BRAIN_WAVES = [
   },
 ];
 
-const EXPERTS = [
-  {
-    name: "Dr. Sarah Chen",
-    role: "Neuro-Pathologist",
-    quote: "The brain is the body's most complex frontier. We are here to map it, together."
-  },
-  {
-    name: "Dr. James Wilson",
-    role: "Lead EEG Specialist",
-    quote: "True healthcare requires listening not just to words, but to neural pathways."
-  },
-  {
-    name: "Dr. Elena Rodriguez",
-    role: "Brain-Behavior Expert",
-    quote: "Healing begins when we can accurately visualize the invisible signals of stress."
-  }
-];
 
 const BrainWaveVisualizer: React.FC<{ speed: number; color: string }> = ({
   speed,
@@ -851,52 +834,6 @@ export const Home: React.FC = () => {
           <p style={{ color: "var(--text-muted)", fontSize: 18 }}>
             Our platform connects you with world-class medical professionals dedicated to your mental well-being.
           </p>
-        </div>
-        <div className="grid-3">
-          {EXPERTS.map((expert, i) => (
-            <div className="card" key={i} style={{ textAlign: "center", display: "flex", flexDirection: "column" }}>
-              <div
-                style={{
-                  width: 100,
-                  height: 100,
-                  borderRadius: "50%",
-                  background: "var(--surface)",
-                  margin: "0 auto 24px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Stethoscope size={40} color="var(--primary-light)" />
-              </div>
-              <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
-                {expert.name}
-              </h3>
-              <p
-                style={{
-                  color: "var(--primary)",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  marginBottom: 24,
-                }}
-              >
-                {expert.role}
-              </p>
-              <blockquote
-                style={{
-                  margin: "auto 0 0 0",
-                  fontStyle: "italic",
-                  color: "var(--text-muted)",
-                  fontSize: 15,
-                  lineHeight: 1.6,
-                  borderTop: "1px solid var(--border)",
-                  paddingTop: 20,
-                }}
-              >
-                "{expert.quote}"
-              </blockquote>
-            </div>
-          ))}
         </div>
 
         <div style={{ marginTop: 80, textAlign: 'center' }}>
