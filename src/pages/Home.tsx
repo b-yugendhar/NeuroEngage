@@ -248,11 +248,30 @@ const BRAIN_WAVES = [
   },
 ];
 
+const EXPERTS = [
+  {
+    name: "Dr. Sarah Chen",
+    role: "Neuro-Pathologist",
+    quote: "The brain is the body's most complex frontier. We are here to map it, together."
+  },
+  {
+    name: "Dr. James Wilson",
+    role: "Lead EEG Specialist",
+    quote: "True healthcare requires listening not just to words, but to neural pathways."
+  },
+  {
+    name: "Dr. Elena Rodriguez",
+    role: "Brain-Behavior Expert",
+    quote: "Healing begins when we can accurately visualize the invisible signals of stress."
+  }
+];
+
 const BrainWaveVisualizer: React.FC<{ speed: number; color: string }> = ({
   speed,
   color,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -273,6 +292,7 @@ const BrainWaveVisualizer: React.FC<{ speed: number; color: string }> = ({
       const amplitude = 40;
       const frequency = speed * 0.01;
       const step = 4;
+
       ctx.moveTo(0, canvas.height / 2);
       for (let x = 0; x <= canvas.width; x += step) {
         const y =
@@ -283,9 +303,11 @@ const BrainWaveVisualizer: React.FC<{ speed: number; color: string }> = ({
       offset -= 0.1;
       animationId = requestAnimationFrame(draw);
     };
+
     draw();
     return () => cancelAnimationFrame(animationId);
   }, [speed, color]);
+
   return (
     <canvas
       ref={canvasRef}
@@ -323,7 +345,8 @@ export const Home: React.FC = () => {
 
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 2500); 
+    }, 2500); // 2.5 seconds of purple splash screen
+
     return () => {
       clearTimeout(timer);
       document.body.style.overflow = "unset";
@@ -375,6 +398,8 @@ export const Home: React.FC = () => {
   return (
     <div className="home-root">
       <style>{pageStyles}</style>
+
+      {/* ─── CINEMATIC SPLASH SCREEN ─── */}
       <AnimatePresence>
         {showSplash && (
           <motion.div
@@ -546,13 +571,13 @@ export const Home: React.FC = () => {
                   repeat: Infinity,
                   duration: 6,
                   ease: "easeInOut",
-                  delay: 1.5, 
+                  delay: 1.5, // Waits for the layoutId transition to finish flying in before it starts floating
                 },
-                opacity:{ duration: 0.5 },
+                opacity: { duration: 0.5 },
               }}
             >
               <motion.img
-                layoutId="neural-hero-gif" 
+                layoutId="neural-hero-gif" // This matches the Splash Screen, allowing it to fly perfectly into place!
                 src="https://cdn.dribbble.com/userupload/44366577/file/29261ea2f21de39cc959d5cd1c78c04e.gif"
                 alt="Neural Visualization"
                 transition={{ duration: 1.2, ease: "easeInOut" }}
@@ -1327,6 +1352,10 @@ export const Home: React.FC = () => {
               NeuroEngage
             </span>
           </div>
+          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
+            © 2026 NeuroEngage Clinical Systems. All rights reserved. <br />
+            <span style={{ fontSize: 12, opacity: 0.7 }}>Not intended to replace emergency medical services.</span>
+          </p>
         </div>
       </footer>
     </div>
