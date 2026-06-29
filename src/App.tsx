@@ -5,6 +5,7 @@ import { LiveEEG } from './pages/LiveEEG';
 import { Analysis } from './pages/Analysis';
 import { Patients } from './pages/Patients';
 import { Settings } from './pages/Settings';
+import { LiveInteraction } from './pages/LiveInteraction';
 import { StressClassifier } from './pages/StressClassifier';
 import { Layout } from './components/Layout';
 
@@ -17,6 +18,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/eeg" element={<LiveEEG />} />
           <Route path="/analysis" element={<Analysis />} />
+          <Route path="/interaction" element={<LiveInteraction />} />
           <Route path="/patients" element={<Patients />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/stress-classifier" element={<StressClassifier />} />

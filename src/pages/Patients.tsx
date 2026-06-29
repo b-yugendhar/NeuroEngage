@@ -3,11 +3,9 @@ import { Card, Input } from '../components/UI';
 import { Search, UserCircle, ChevronDown, ChevronUp, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-
 const C_LOAD = '#ef4444';     
 const C_FOCUS = '#BF77F6';    
 const C_ATTENTION = '#64748b'; 
-
 const generatePatientHistory = (seed: number) => {
   return Array.from({ length: 14 }, (_, i) => {
     return {

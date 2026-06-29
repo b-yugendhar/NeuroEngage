@@ -4,8 +4,24 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 dotenv.config();
 const app = express();
+const server = http.createServer(app);
+const io = new SocketIOServer(server, {
+  cors: { origin: '*' }
+});
+
+io.on('connection', (socket) => {
+  socket.on('join-room', (roomId) => {
+    socket.join(roomId);
+  });
+  socket.on('send-message', (data) => {
+    io.to(data.roomId).emit('receive-message', data);
+  });
+  socket.on('disconnect', () => {});
+});
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 // Mongoose Schemas
@@ -14,7 +30,11 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['patient', 'doctor'], default: 'patient' },
   pairingCode: String,
-  doctorCode: String
+  doctorCode: String,
+  email: String,
+  phone: String,
+  specialization: String,
+  age: String
 });
 const sessionSchema = new mongoose.Schema({
   userId: String,
@@ -30,7 +50,9 @@ const sessionSchema = new mongoose.Schema({
     caffeine: String,
     task: String
   },
-  waves: Array
+  waves: Array,
+  doctorNotes: String,
+  recommendations: String
 });
 
 const User = mongoose.model('User', userSchema);
@@ -38,21 +60,23 @@ const Session = mongoose.model('Session', sessionSchema);
 // Auth Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { username, password, role, doctorCode } = req.body;
+    const { username, password, role, doctorCode, email, phone, specialization, age } = req.body;
     const existing = await User.findOne({ username });
     if (existing) return res.status(400).json({ error: 'Username already taken.' });
     let newPairingCode = undefined;
     if (role === 'doctor') {
       newPairingCode = Math.random().toString(36).substring(2, 8).toUpperCase();
     } else if (role === 'patient') {
-      if (!doctorCode) return res.status(400).json({ error: 'Doctor Pairing Code is required for patients.' });
+      if (!doctorCode) 
+        return res.status(400).json({ error: 'Doctor Pairing Code is required for patients.' });
       const doctorCheck = await User.findOne({ pairingCode: doctorCode, role: 'doctor' });
-      if (!doctorCheck) return res.status(400).json({ error: 'Invalid Pairing Code. No matching doctor found.' });
+      if (!doctorCheck) 
+        return res.status(400).json({ error: 'Invalid Pairing Code. No matching doctor found.' });
     }
 
-    const user = new User({ username, password, role, pairingCode: newPairingCode, doctorCode });
+    const user = new User({ username, password, role, pairingCode: newPairingCode, doctorCode, email, phone, specialization, age });
     await user.save();
-    res.status(201).json({ userId: user._id, username: user.username, role: user.role, pairingCode: user.pairingCode, doctorCode: user.doctorCode });
+    res.status(201).json({ userId: user._id, username: user.username, role: user.role, pairingCode: user.pairingCode, doctorCode: user.doctorCode, email: user.email });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: error.message });
@@ -63,7 +87,8 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
     const user = await User.findOne({ username, password });
-    if (!user) return res.status(401).json({ error: 'Invalid username or password.' });
+    if (!user)
+       return res.status(401).json({ error: 'Invalid username or password.' });
 
     res.status(200).json({ userId: user._id, username: user.username, role: user.role, pairingCode: user.pairingCode, doctorCode: user.doctorCode });
   } catch (error) {
@@ -84,13 +109,15 @@ app.post('/api/sessions', async (req, res) => {
   }
 });
 
-app.get('/api/sessions', async (req, res) => {
+app.get('/api/sessions', async(req, res) => {
   try {
     const { userId, doctorCode } = req.query;
     let filter = {};
     
-    if (userId && userId !== 'undefined' && userId !== 'null') filter.userId = userId;
-    if (doctorCode && doctorCode !== 'undefined' && doctorCode !== 'null') filter.doctorCode = doctorCode;
+    if (userId && userId !== 'undefined' && userId !== 'null')
+       filter.userId = userId;
+    if (doctorCode && doctorCode !== 'undefined' && doctorCode !== 'null') 
+      filter.doctorCode = doctorCode;
     
     if (Object.keys(filter).length === 0) {
       return res.json([]);
@@ -100,6 +127,22 @@ app.get('/api/sessions', async (req, res) => {
     res.json(sessions);
   } catch (error) {
     console.error('Error fetching sessions:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/sessions/:id/notes', async (req, res) => {
+  try {
+    const { doctorNotes, recommendations } = req.body;
+    const session = await Session.findByIdAndUpdate(
+      req.params.id, 
+      { doctorNotes, recommendations }, 
+      { new: true }
+    );
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    res.json(session);
+  } catch (error) {
+    console.error('Error updating session notes:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -170,13 +213,13 @@ const startServer = async () => {
     }
 
     await mongoose.connect(mongoUri);
-    console.log(`✅ Connected successfully to Persistent MongoDB Atlas Cloud Cluster!`);
+    console.log(`Connected successfully to Persistent MongoDB Atlas Cloud Cluster!`);
     
     await seedDatabase();
 
     const PORT = process.env.PORT || 5001;
-    app.listen(PORT, () => {
-      console.log(`Backend Express server is running and listening on port ${PORT}`);
+    server.listen(PORT, () => {
+      console.log(`Backend Express & Socket.IO server is running on port ${PORT}`);
     });
   } catch (err) {
     console.error('Failed to start backend server:', err);
@@ -254,7 +297,6 @@ function generateEEGSample() {
     n_total_features: 160,
   };
 }
-
 // Model info endpoint
 app.get('/api/eeg/model-info', (req, res) => {
   res.json({

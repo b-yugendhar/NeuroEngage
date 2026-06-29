@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/* ── Clean Light Theme CSS ── */
 const pageStyles = `
   :root {
     --primary: #BF77F6;
@@ -249,30 +248,11 @@ const BRAIN_WAVES = [
   },
 ];
 
-const EXPERTS = [
-  {
-    name: "Dr. Sarah Chen",
-    role: "Neuro-Pathologist",
-    quote: "The brain is the body's most complex frontier. We are here to map it, together."
-  },
-  {
-    name: "Dr. James Wilson",
-    role: "Lead EEG Specialist",
-    quote: "True healthcare requires listening not just to words, but to neural pathways."
-  },
-  {
-    name: "Dr. Elena Rodriguez",
-    role: "Brain-Behavior Expert",
-    quote: "Healing begins when we can accurately visualize the invisible signals of stress."
-  }
-];
-
 const BrainWaveVisualizer: React.FC<{ speed: number; color: string }> = ({
   speed,
   color,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -293,7 +273,6 @@ const BrainWaveVisualizer: React.FC<{ speed: number; color: string }> = ({
       const amplitude = 40;
       const frequency = speed * 0.01;
       const step = 4;
-
       ctx.moveTo(0, canvas.height / 2);
       for (let x = 0; x <= canvas.width; x += step) {
         const y =
@@ -304,11 +283,9 @@ const BrainWaveVisualizer: React.FC<{ speed: number; color: string }> = ({
       offset -= 0.1;
       animationId = requestAnimationFrame(draw);
     };
-
     draw();
     return () => cancelAnimationFrame(animationId);
   }, [speed, color]);
-
   return (
     <canvas
       ref={canvasRef}
@@ -330,6 +307,10 @@ export const Home: React.FC = () => {
   const [role, setRole] = useState<"patient" | "doctor">("patient");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [specialization, setSpecialization] = useState("");
+  const [age, setAge] = useState("");
 
   // Control Splash Screen Animation
   useEffect(() => {
@@ -342,8 +323,7 @@ export const Home: React.FC = () => {
 
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 2500); // 2.5 seconds of purple splash screen
-
+    }, 2500); 
     return () => {
       clearTimeout(timer);
       document.body.style.overflow = "unset";
@@ -359,11 +339,15 @@ export const Home: React.FC = () => {
     const endpoint = isRegistering ? "https://neuroengage.onrender.com/api/auth/register" : "https://neuroengage.onrender.com/api/auth/login";
     const payload = isRegistering
       ? {
-          username,
-          password,
-          role,
-          doctorCode: role === "patient" ? doctorCode : undefined,
-        }
+        username,
+        password,
+        role,
+        doctorCode: role === "patient" ? doctorCode : undefined,
+        email,
+        phone,
+        specialization: role === "doctor" ? specialization : undefined,
+        age: role === "patient" ? age : undefined,
+      }
       : { username, password };
 
     try {
@@ -391,8 +375,6 @@ export const Home: React.FC = () => {
   return (
     <div className="home-root">
       <style>{pageStyles}</style>
-
-      {/* ─── CINEMATIC SPLASH SCREEN ─── */}
       <AnimatePresence>
         {showSplash && (
           <motion.div
@@ -564,13 +546,13 @@ export const Home: React.FC = () => {
                   repeat: Infinity,
                   duration: 6,
                   ease: "easeInOut",
-                  delay: 1.5, // Waits for the layoutId transition to finish flying in before it starts floating
+                  delay: 1.5, 
                 },
-                opacity: { duration: 0.5 },
+                opacity:{ duration: 0.5 },
               }}
             >
               <motion.img
-                layoutId="neural-hero-gif" // This matches the Splash Screen, allowing it to fly perfectly into place!
+                layoutId="neural-hero-gif" 
                 src="https://cdn.dribbble.com/userupload/44366577/file/29261ea2f21de39cc959d5cd1c78c04e.gif"
                 alt="Neural Visualization"
                 transition={{ duration: 1.2, ease: "easeInOut" }}
@@ -898,32 +880,32 @@ export const Home: React.FC = () => {
             <p style={{ color: 'var(--text-muted)', maxWidth: 600 }}>
               Seamlessly connect with your neurological specialist, share real-time cognitive telemetry, and manage your health from the comfort of your own home.
             </p>
-            
+
             <motion.div
-              style={{ 
-                maxWidth: 800, 
-                width: '100%', 
-                position: 'relative', 
-                zIndex: 0 
+              style={{
+                maxWidth: 800,
+                width: '100%',
+                position: 'relative',
+                zIndex: 0
               }}
               initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1, y: [0, -15, 0] }} 
+              whileInView={{ opacity: 1, scale: 1, y: [0, -15, 0] }}
               viewport={{ once: true }}
-              transition={{ 
-                duration: 1.2, 
-                y: { 
-                  repeat: Infinity, 
-                  duration: 6, 
-                  ease: "easeInOut" 
+              transition={{
+                duration: 1.2,
+                y: {
+                  repeat: Infinity,
+                  duration: 6,
+                  ease: "easeInOut"
                 }
               }}
             >
               <img
                 src="https://drparagagarwal.co.in/wp-content/uploads/2022/05/24867-online-doctor-app.gif"
                 alt="Seamless Patient Experience"
-                style={{ 
-                  width: '60%', 
-                  height: 'auto', 
+                style={{
+                  width: '60%',
+                  height: 'auto',
                   display: 'block',
                   margin: '0 auto',
                   mixBlendMode: 'multiply',
@@ -943,7 +925,7 @@ export const Home: React.FC = () => {
         >
           <div style={{ flex: "1 1 400px" }}>
             <h2 style={{ fontSize: 48, fontWeight: 900, marginBottom: 24 }}>
-              Take Control of Your <br/>
+              Take Control of Your <br />
               <span style={{ color: "var(--primary)" }}>Cognitive Health</span>
             </h2>
             <p
@@ -1054,7 +1036,7 @@ export const Home: React.FC = () => {
                 />
 
                 {isRegistering && (
-                  <div style={{ marginBottom: 20 }}>
+                  <>
                     <label
                       style={{
                         fontSize: 12,
@@ -1065,64 +1047,158 @@ export const Home: React.FC = () => {
                         display: "block",
                       }}
                     >
-                      Account Type
+                      Email
                     </label>
-                    <div
+                    <input
+                      className="login-input"
+                      type="email"
+                      placeholder="Enter your email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      disabled={loading}
+                    />
+
+                    <label
                       style={{
-                        display: "flex",
-                        gap: 8,
-                        padding: 6,
-                        borderRadius: 12,
-                        background: "var(--surface)",
-                        border: "1px solid var(--border)",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "var(--text-muted)",
+                        textTransform: "uppercase",
+                        marginBottom: 8,
+                        display: "block",
                       }}
                     >
-                      <button
-                        type="button"
-                        onClick={() => setRole("patient")}
-                        disabled={loading}
+                      Phone Number
+                    </label>
+                    <input
+                      className="login-input"
+                      type="text"
+                      placeholder="Enter your phone"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      disabled={loading}
+                    />
+
+                    <div style={{ marginBottom: 20 }}>
+                      <label
                         style={{
-                          flex: 1,
-                          padding: "10px",
-                          borderRadius: "8px",
-                          border: "none",
-                          cursor: "pointer",
-                          background:
-                            role === "patient" ? "white" : "transparent",
-                          fontWeight: role === "patient" ? 700 : 500,
-                          boxShadow:
-                            role === "patient"
-                              ? "0 2px 4px rgba(0,0,0,0.05)"
-                              : "none",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "var(--text-muted)",
+                          textTransform: "uppercase",
+                          marginBottom: 8,
+                          display: "block",
                         }}
                       >
-                        Patient
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRole("doctor");
-                          setDoctorCode("");
-                        }}
-                        disabled={loading}
+                        Account Type
+                      </label>
+                      <div
                         style={{
-                          flex: 1,
-                          padding: "10px",
-                          borderRadius: "8px",
-                          border: "none",
-                          cursor: "pointer",
-                          background:
-                            role === "doctor" ? "white" : "transparent",
-                          fontWeight: role === "doctor" ? 700 : 500,
-                          boxShadow:
-                            role === "doctor"
-                              ? "0 2px 4px rgba(0,0,0,0.05)"
-                              : "none",
+                          display: "flex",
+                          gap: 8,
+                          padding: 6,
+                          borderRadius: 12,
+                          background: "var(--surface)",
+                          border: "1px solid var(--border)",
                         }}
                       >
-                        Doctor
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setRole("patient")}
+                          disabled={loading}
+                          style={{
+                            flex: 1,
+                            padding: "10px",
+                            borderRadius: "8px",
+                            border: "none",
+                            cursor: "pointer",
+                            background:
+                              role === "patient" ? "white" : "transparent",
+                            fontWeight: role === "patient" ? 700 : 500,
+                            boxShadow:
+                              role === "patient"
+                                ? "0 2px 4px rgba(0,0,0,0.05)"
+                                : "none",
+                          }}
+                        >
+                          Patient
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setRole("doctor");
+                            setDoctorCode("");
+                          }}
+                          disabled={loading}
+                          style={{
+                            flex: 1,
+                            padding: "10px",
+                            borderRadius: "8px",
+                            border: "none",
+                            cursor: "pointer",
+                            background:
+                              role === "doctor" ? "white" : "transparent",
+                            fontWeight: role === "doctor" ? 700 : 500,
+                            boxShadow:
+                              role === "doctor"
+                                ? "0 2px 4px rgba(0,0,0,0.05)"
+                                : "none",
+                          }}
+                        >
+                          Doctor
+                        </button>
+                      </div>
                     </div>
+                  </>
+                )}
+
+                {isRegistering && role === "doctor" && (
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "var(--text-muted)",
+                        textTransform: "uppercase",
+                        marginBottom: 8,
+                        display: "block",
+                      }}
+                    >
+                      Specialization
+                    </label>
+                    <input
+                      className="login-input"
+                      type="text"
+                      placeholder="e.g. Neurologist"
+                      value={specialization}
+                      onChange={(e) => setSpecialization(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                )}
+
+                {isRegistering && role === "patient" && (
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "var(--text-muted)",
+                        textTransform: "uppercase",
+                        marginBottom: 8,
+                        display: "block",
+                      }}
+                    >
+                      Age
+                    </label>
+                    <input
+                      className="login-input"
+                      type="number"
+                      placeholder="Age"
+                      value={age}
+                      onChange={(e) => setAge(e.target.value)}
+                      disabled={loading}
+                    />
                   </div>
                 )}
 
@@ -1251,10 +1327,6 @@ export const Home: React.FC = () => {
               NeuroEngage
             </span>
           </div>
-          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>
-            © 2026 NeuroEngage Clinical Systems. All rights reserved. <br/>
-            <span style={{ fontSize: 12, opacity: 0.7 }}>Not intended to replace emergency medical services.</span>
-          </p>
         </div>
       </footer>
     </div>

@@ -1,2 +1,0 @@
-src/pages/Analysis.tsx(295,84): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
-src/pages/Analysis.tsx(299,82): error TS2322: Type '{}' is not assignable to type 'ReactNode'.

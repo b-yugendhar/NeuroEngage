@@ -6,17 +6,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface SessionRecord {
   id: string;
+  realId: string;
   date: string;
   duration: string;
   avgStress: string;
   avgFocus: string;
   waves: { time: number; alpha: number; beta: number; gamma: number; focus: number; attention: number; }[];
   context: Record<string, any>;
+  doctorNotes?: string;
+  recommendations?: string;
 }
 
-const C_LOAD = '#ef4444';     
-const C_FOCUS = '#BF77F6';    
-const C_ATTENTION = '#BF77F6'; 
+const C_LOAD = '#ef4444';
+const C_FOCUS = '#BF77F6';
+const C_ATTENTION = '#BF77F6';
 
 // Removed static monthlyData array
 
@@ -42,7 +45,22 @@ export const Analysis: React.FC = () => {
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [editingNotes, setEditingNotes] = useState<{ doctorNotes: string, recommendations: string }>({ doctorNotes: '', recommendations: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSaveNotes = async (realId: string) => {
+    try {
+      await fetch(`https://neuroengage.onrender.com/api/sessions/${realId}/notes`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingNotes)
+      });
+      setSessions(prev => prev.map(s => s.realId === realId ? { ...s, ...editingNotes } : s));
+      alert('Notes saved successfully!');
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     const pairingCode = localStorage.getItem('neuro_pairing_code');
@@ -51,14 +69,17 @@ export const Analysis: React.FC = () => {
       .then(res => res.json())
       .then(data => {
         if (data && Array.isArray(data)) {
-          const mapped = data.map((s: { _id: string, date: string, duration?: string, avgStress: string, avgFocus: string, waves: { time: number; alpha: number; beta: number; gamma: number; focus: number; attention: number; }[], context: Record<string, unknown> }) => ({
+          const mapped = data.map((s: any) => ({
             id: 'SES-' + s._id.slice(-4).toUpperCase(),
+            realId: s._id,
             date: new Date(s.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }),
             duration: s.duration || 'Live Recording',
             avgStress: s.avgStress,
             avgFocus: s.avgFocus,
             waves: s.waves,
-            context: s.context as Record<string, string>
+            context: s.context,
+            doctorNotes: s.doctorNotes || '',
+            recommendations: s.recommendations || ''
           }));
           setSessions(mapped);
         }
@@ -66,8 +87,13 @@ export const Analysis: React.FC = () => {
       .catch(err => console.error('Failed to fetch from MongoDB:', err));
   }, [isDoctor, userId]);
 
-  const toggleDetails = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
+  const toggleDetails = (session: SessionRecord) => {
+    if (expandedId === session.id) {
+      setExpandedId(null);
+    } else {
+      setExpandedId(session.id);
+      setEditingNotes({ doctorNotes: session.doctorNotes || '', recommendations: session.recommendations || '' });
+    }
   };
 
   const chartData = React.useMemo(() => {
@@ -75,19 +101,19 @@ export const Analysis: React.FC = () => {
 
     const chronological = [...sessions].reverse();
     const groupedByDate: Record<string, { loadSum: number, focusSum: number, attentionSum: number, count: number }> = {};
-    
+
     chronological.forEach(s => {
       const dateStr = s.date ? s.date.split(',')[0] : 'Unknown';
-      
+
       const load = s.avgStress === 'High' ? 85 : s.avgStress === 'Elevated' ? 65 : 45;
-      const parsedFocus = parseInt(String(s.avgFocus || '50').replace('%',''));
+      const parsedFocus = parseInt(String(s.avgFocus || '50').replace('%', ''));
       const focus = isNaN(parsedFocus) ? 0 : parsedFocus;
       const attention = focus > 0 ? Math.min(100, focus + 5) : 0;
 
       if (!groupedByDate[dateStr]) {
         groupedByDate[dateStr] = { loadSum: 0, focusSum: 0, attentionSum: 0, count: 0 };
       }
-      
+
       groupedByDate[dateStr].loadSum += load;
       groupedByDate[dateStr].focusSum += focus;
       groupedByDate[dateStr].attentionSum += attention;
@@ -112,6 +138,7 @@ export const Analysis: React.FC = () => {
       setTimeout(() => {
         const newSession = {
           id: `SES-0${Math.floor(Math.random() * 100) + 100}`,
+          realId: `LOCAL-${Date.now()}`,
           date: 'Just Now',
           duration: 'Imported Data',
           avgStress: Math.random() > 0.5 ? 'Elevated' : 'Neutral',
@@ -132,24 +159,24 @@ export const Analysis: React.FC = () => {
       <header className="flex justify-between items-end border-b border-border-subtle pb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-1">
-             {isDoctor ? 'Diagnostic Report Library' : 'My Clinical Reports'}
+            {isDoctor ? 'Diagnostic Report Library' : 'My Clinical Reports'}
           </h1>
           <p className="text-text-secondary text-sm">Review historical baselines, detailed brainwave patterns, and patient diagnostic records.</p>
         </div>
         <div className="flex gap-2 relative">
-          <input 
-            type="file" 
-            accept=".csv,.edf,.json" 
-            className="hidden" 
+          <input
+            type="file"
+            accept=".csv,.edf,.json"
+            className="hidden"
             ref={fileInputRef}
-            onChange={handleFileUpload} 
+            onChange={handleFileUpload}
           />
-          <button 
+          <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isUploading}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${isUploading ? 'opacity-50 cursor-not-allowed bg-border-subtle text-text-muted' : 'bg-brand-primary text-white hover:opacity-90'}`}
           >
-            <UploadCloud size={16} className={isUploading ? 'animate-bounce' : ''} /> 
+            <UploadCloud size={16} className={isUploading ? 'animate-bounce' : ''} />
             {isUploading ? 'Loading Data...' : 'Import Data'}
           </button>
           <button className="flex items-center gap-2 px-4 py-2 rounded-md bg-white border border-border-highlight text-text-primary text-sm font-medium hover:bg-gray-50 transition-colors">
@@ -170,7 +197,7 @@ export const Analysis: React.FC = () => {
                 Historical overview tracking physiological vs cognitive metrics over an extended monthly clinical cadence.
               </p>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-6 text-sm text-text-secondary">
               <div className="flex flex-col gap-1 max-w-[200px]">
                 <div className="flex items-center gap-2 font-medium text-white text-xs">
@@ -203,7 +230,7 @@ export const Analysis: React.FC = () => {
                   <AreaChart data={chartData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} dy={15} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fill: '#52525b', fontSize: 12 }} domain={[0, 100]} />
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
                     />
                     <Area type="monotone" name="Cognitive Load" dataKey="load" stroke={C_LOAD} fillOpacity={0.1} fill={C_LOAD} isAnimationActive={false} strokeWidth={1} />
@@ -249,23 +276,22 @@ export const Analysis: React.FC = () => {
                     </tr>
                   ) : sessions.map((session) => (
                     <React.Fragment key={session.id}>
-                      <tr 
+                      <tr
                         className={`border-b border-border-subtle transition-colors cursor-pointer ${expandedId === session.id ? 'bg-border-subtle/50' : 'hover:bg-bg-surface-elevated/50'}`}
-                        onClick={() => toggleDetails(session.id)}
+                        onClick={() => toggleDetails(session)}
                       >
                         <td className="p-4 text-sm font-medium text-text-primary">{(session.context?.username as string) || session.id}</td>
                         <td className="p-4 text-sm text-text-secondary">{session.date}</td>
                         <td className="p-4 text-sm text-text-secondary">
-                          {session.context?.task === 'Take a Cognitive Quiz' 
+                          {session.context?.task === 'Take a Cognitive Quiz'
                             ? (session.context?.battery ? `Diagnostic: ${session.context.battery as string}` : 'Cognitive Diagnostic')
                             : (session.context?.task as string) || session.duration}
                         </td>
                         <td className="p-4 text-sm">
-                          <span className={`px-2 py-1 rounded text-xs font-medium border ${
-                            session.avgStress === 'High' ? 'text-status-stress border-status-stress/20' :
+                          <span className={`px-2 py-1 rounded text-xs font-medium border ${session.avgStress === 'High' ? 'text-status-stress border-status-stress/20' :
                             session.avgStress === 'Elevated' ? 'text-status-anxious border-status-anxious/20' :
-                            'text-status-calm border-status-calm/20'
-                          }`}>
+                              'text-status-calm border-status-calm/20'
+                            }`}>
                             {session.avgStress}
                           </span>
                         </td>
@@ -278,9 +304,9 @@ export const Analysis: React.FC = () => {
 
                       {/* Expanded Details Pane */}
                       {expandedId === session.id && (
-                        <motion.tr 
-                          initial={{ opacity: 0, height: 0 }} 
-                          animate={{ opacity: 1, height: 'auto' }} 
+                        <motion.tr
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
                           className="bg-bg-base border-b border-border-subtle"
                         >
@@ -300,7 +326,40 @@ export const Analysis: React.FC = () => {
                                   </div>
                                 </div>
                               </div>
-                              
+
+                              <div className="flex flex-col gap-4 bg-bg-surface-elevated/30 p-4 rounded-md border border-border-subtle">
+                                <h4 className="text-text-primary text-sm font-medium flex justify-between items-center">
+                                  <span>Doctor's Clinical Notes</span>
+                                  {isDoctor && (
+                                    <button onClick={() => handleSaveNotes(session.realId)} className="bg-brand-primary text-white text-xs px-3 py-1 rounded">Save Notes</button>
+                                  )}
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-text-muted text-xs uppercase tracking-wider mb-1">Observations</p>
+                                    <textarea
+                                      className="w-full text-sm p-2 rounded border border-border-subtle bg-bg-base"
+                                      rows={3}
+                                      placeholder="Note session context and observations..."
+                                      value={isDoctor ? editingNotes.doctorNotes : session.doctorNotes}
+                                      onChange={(e) => setEditingNotes({ ...editingNotes, doctorNotes: e.target.value })}
+                                      readOnly={!isDoctor}
+                                    />
+                                  </div>
+                                  <div>
+                                    <p className="text-text-muted text-xs uppercase tracking-wider mb-1">Recommendations & Actions</p>
+                                    <textarea
+                                      className="w-full text-sm p-2 rounded border border-border-subtle bg-bg-base"
+                                      rows={3}
+                                      placeholder="Provide recommendations based on analysis..."
+                                      value={isDoctor ? editingNotes.recommendations : session.recommendations}
+                                      onChange={(e) => setEditingNotes({ ...editingNotes, recommendations: e.target.value })}
+                                      readOnly={!isDoctor}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
                               <div className="flex flex-col gap-3">
                                 <h4 className="text-white text-sm font-medium flex items-center gap-2">
                                   <Activity size={14} className="text-text-muted" />
@@ -337,7 +396,7 @@ export const Analysis: React.FC = () => {
                                   </ResponsiveContainer>
                                 </div>
                               </div>
-                              
+
                             </div>
                           </td>
                         </motion.tr>

@@ -1,22 +1,22 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Activity, Brain, User, Settings, LogOut, Disc, Zap } from 'lucide-react';
+import { Activity, Brain, User, Settings, LogOut, Disc, Zap, Video } from 'lucide-react';
 import { cn } from '../utils/cn';
 
 export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const role = localStorage.getItem('neuro_role') || 'doctor';
-
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
     localStorage.removeItem('neuro_role');
     navigate('/');
   };
 
-  const allNavItems = [
+  const allNavItems=[
     { icon: Disc, label: 'Patient Dashboard', path: '/dashboard', roles: ['doctor', 'patient'] },
     { icon: Activity, label: 'Clinical Monitor', path: '/eeg', roles: ['doctor', 'patient'] },
     { icon: Brain, label: 'Diagnostic Reports', path: '/analysis', roles: ['doctor', 'patient'] },
+    { icon: Video, label: 'Live Interaction', path: '/interaction', roles: ['doctor', 'patient'] },
     { icon: User, label: 'Patient Registry', path: '/patients', roles: ['doctor'] },
     { icon: Zap, label: 'Assessment AI', path: '/stress-classifier', roles: ['doctor', 'patient'] },
     { icon: Settings, label: 'Portal Settings', path: '/settings', roles: ['doctor', 'patient'] },
@@ -38,7 +38,7 @@ export const Sidebar: React.FC = () => {
         </span>
       </div>
 
-      <nav className="flex-1 px-4 py-2 flex flex-col gap-1">
+      <nav className="flex-1 px-4 py-2 flex flex-col gap-1 ">
         {filteredNavItems.map((item) => (
           <NavLink
             key={item.path}
@@ -46,8 +46,8 @@ export const Sidebar: React.FC = () => {
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 px-4 py-2 rounded-md transition-colors text-sm",
-                isActive 
-                  ? "text-brand-primary font-semibold bg-brand-primary/5" 
+                isActive
+                  ? "text-brand-primary font-semibold bg-brand-primary/5"
                   : "text-text-secondary hover:text-text-primary hover:bg-black/5"
               )
             }
@@ -58,9 +58,8 @@ export const Sidebar: React.FC = () => {
           </NavLink>
         ))}
       </nav>
-
       <div className="p-6">
-        <a 
+        <a
           href="/"
           onClick={handleLogout}
           className="flex items-center gap-3 px-4 py-2 text-sm rounded-md text-text-secondary hover:text-text-primary hover:bg-black/5 transition-colors"

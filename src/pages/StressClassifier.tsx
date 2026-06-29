@@ -1,9 +1,6 @@
 import React from 'react';
 
-/**
- * EEG Stress Classifier — Embeds the original Flask website as-is.
- * The Flask server (EEG-based-stress-classification/server.py) must be running on port 5002.
- */
+
 export const StressClassifier: React.FC = () => {
   return (
     <iframe

@@ -9,14 +9,13 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', fullWidth, children, ...props }, ref) => {
     const baseStyles = 'inline-flex items-center justify-center rounded-md px-4 py-2 text-sm transition-colors focus:outline-none disabled:opacity-50 disabled:pointer-events-none';
-    
+  
     const variants = {
       primary: 'font-semibold',
       secondary: 'hover:opacity-80',
       outline: 'bg-transparent transition-colors',
       ghost: 'bg-transparent hover:bg-black/5 transition-colors',
     };
-
     const variantStyles: Record<string, React.CSSProperties> = {
       primary: { background: 'linear-gradient(135deg, var(--brand-primary), var(--brand-accent))', color: '#ffffff', border: 'none', boxShadow: '0 4px 14px rgba(79,70,229,0.2)', borderRadius: 10 },
       secondary: { color: 'var(--text-primary)', background: 'var(--bg-surface-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 10 },
@@ -37,11 +36,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   }
 );
 Button.displayName = 'Button';
-
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   glass?: boolean;
 }
-
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, children, ...props }, ref) => {
     return (
@@ -73,7 +70,6 @@ export const CardContent = ({ className, ...props }: React.HTMLAttributes<HTMLDi
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon?: React.ReactNode;
 }
-
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, icon, ...props }, ref) => {
     return (
