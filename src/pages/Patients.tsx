@@ -3,9 +3,10 @@ import { Card, Input } from '../components/UI';
 import { Search, UserCircle, ChevronDown, ChevronUp, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-const C_LOAD = '#ef4444';     
-const C_FOCUS = '#BF77F6';    
-const C_ATTENTION = '#64748b'; 
+import { authFetch, getApiUrl } from '../utils/api';
+const C_LOAD = '#ef4444';
+const C_FOCUS = '#BF77F6';
+const C_ATTENTION = '#64748b';
 const generatePatientHistory = (seed: number) => {
   return Array.from({ length: 14 }, (_, i) => {
     return {
@@ -28,24 +29,24 @@ export const Patients: React.FC = () => {
     const pairingCode = localStorage.getItem('neuro_pairing_code');
     const userId = localStorage.getItem('neuro_user');
 
-    const url = isDoctor ? `https://neuroengage.onrender.com/api/sessions?doctorCode=${pairingCode}` : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
-    
-    fetch(url)
+    const url = isDoctor ? getApiUrl(`/api/sessions?doctorCode=${pairingCode}`) : getApiUrl(`/api/sessions?userId=${userId}`);
+
+    authFetch(url)
       .then(res => res.json())
       .then(data => {
         if (data && Array.isArray(data)) {
           const patientMap = new Map();
           data.forEach(s => {
-             if (!patientMap.has(s.userId)) {
-                patientMap.set(s.userId, {
-                   name: s.username || s.context?.username || 'Unknown Patient',
-                   id: 'PT-' + s.userId.slice(-4).toUpperCase(),
-                   stressLevel: s.avgStress || 'Neutral',
-                   focus: s.avgFocus || '0%',
-                   status: 'Offline',
-                   history: generatePatientHistory(Math.random()) 
-                });
-             }
+            if (!patientMap.has(s.userId)) {
+              patientMap.set(s.userId, {
+                name: s.username || s.context?.username || 'Unknown Patient',
+                id: 'PT-' + s.userId.slice(-4).toUpperCase(),
+                stressLevel: s.avgStress || 'Neutral',
+                focus: s.avgFocus || '0%',
+                status: 'Offline',
+                history: generatePatientHistory(Math.random())
+              });
+            }
           });
           setPatientsList(Array.from(patientMap.values()));
         }
@@ -57,8 +58,8 @@ export const Patients: React.FC = () => {
     setExpandedId(expandedId === id ? null : id);
   };
 
-  const filteredPatients = patientsList.filter(patient => 
-    patient.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredPatients = patientsList.filter(patient =>
+    patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     patient.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -70,9 +71,9 @@ export const Patients: React.FC = () => {
           <p className="text-text-secondary text-sm">Monitor individual patient metrics and access detailed medical history.</p>
         </div>
         <div className="w-full max-w-sm">
-          <Input 
-            icon={<Search size={16} />} 
-            placeholder="Search patients by name or ID..." 
+          <Input
+            icon={<Search size={16} />}
+            placeholder="Search patients by name or ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -87,7 +88,7 @@ export const Patients: React.FC = () => {
         ) : filteredPatients.map((patient, idx) => (
           <motion.div key={patient.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
             <Card className="flex flex-col overflow-hidden transition-colors hover:border-border-highlight">
-              <div 
+              <div
                 className="flex flex-col md:flex-row md:items-center justify-between p-4 cursor-pointer gap-4 md:gap-0"
                 onClick={() => toggleDetails(patient.id)}
               >
@@ -108,11 +109,10 @@ export const Patients: React.FC = () => {
                   </div>
                   <div className="flex flex-col md:items-end">
                     <p className="text-[10px] uppercase tracking-wider text-text-muted mb-1">Clinical State</p>
-                    <span className={`px-2 py-0.5 rounded text-[11px] font-medium border ${
-                          patient.stressLevel === 'High' ? 'text-status-stress border-status-stress/20' :
-                          patient.stressLevel === 'Elevated' ? 'text-status-anxious border-status-anxious/20' :
-                          'text-status-calm border-status-calm/20'
-                        }`}>
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-medium border ${patient.stressLevel === 'High' ? 'text-status-stress border-status-stress/20' :
+                      patient.stressLevel === 'Elevated' ? 'text-status-anxious border-status-anxious/20' :
+                        'text-status-calm border-status-calm/20'
+                      }`}>
                       {patient.stressLevel}
                     </span>
                   </div>
@@ -124,9 +124,9 @@ export const Patients: React.FC = () => {
 
               <AnimatePresence>
                 {expandedId === patient.id && (
-                  <motion.div 
-                    initial={{ height: 0, opacity: 0 }} 
-                    animate={{ height: 'auto', opacity: 1 }} 
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     className="border-t border-border-subtle bg-bg-base/50"
                   >
@@ -136,11 +136,11 @@ export const Patients: React.FC = () => {
                           <History size={14} className="text-brand-primary" />
                           14-Day Clinical Baseline Tracking
                         </h4>
-                        
+
                         <div className="flex items-center gap-4 text-xs text-text-muted">
-                          <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: C_LOAD}}></div> Stress Index</span>
-                          <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: C_FOCUS}}></div> Focus Index</span>
-                          <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: C_ATTENTION}}></div> Attention Span</span>
+                          <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C_LOAD }}></div> Stress Index</span>
+                          <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C_FOCUS }}></div> Focus Index</span>
+                          <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: C_ATTENTION }}></div> Attention Span</span>
                         </div>
                       </div>
 
@@ -149,9 +149,9 @@ export const Patients: React.FC = () => {
                           <AreaChart data={patient.history} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                             <XAxis dataKey="day" hide />
                             <YAxis domain={[0, 100]} hide />
-                            <Tooltip 
-                              contentStyle={{ backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} 
-                              labelStyle={{ display: 'none' }} 
+                            <Tooltip
+                              contentStyle={{ backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                              labelStyle={{ display: 'none' }}
                             />
                             <Area type="monotone" name="Stress Level" dataKey="load" stroke={C_LOAD} fillOpacity={0.1} fill={C_LOAD} isAnimationActive={false} strokeWidth={1} />
                             <Area type="monotone" name="Cognitive Focus" dataKey="focus" stroke={C_FOCUS} fillOpacity={0} isAnimationActive={false} strokeWidth={1} />
@@ -159,7 +159,7 @@ export const Patients: React.FC = () => {
                           </AreaChart>
                         </ResponsiveContainer>
                       </div>
-                      
+
                       <div className="mt-4 flex gap-4 text-xs text-text-secondary">
                         <p>Patient status: <strong>{patient.status.toLowerCase()}</strong>.</p>
                         <p>Latest assessment: <strong>{patient.stressLevel}</strong> stress risk detected.</p>

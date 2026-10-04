@@ -4,11 +4,12 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { Users, TrendingUp, AlertTriangle, Copy, Activity, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { authFetch, getApiUrl } from '../utils/api';
 
 interface SessionRecord {
   _id?: string;
   date: string;
-  avgStress: string;  
+  avgStress: string;
   avgFocus: string;
 }
 
@@ -44,13 +45,13 @@ export const Dashboard: React.FC = () => {
   //Fetching sessions (doctor: by doctorCode, patient: by userId)
   useEffect(() => {
     const url = isDoctor
-      ? `https://neuroengage.onrender.com/api/sessions?doctorCode=${pairingCode}`
-      : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
+      ? getApiUrl(`/api/sessions?doctorCode=${pairingCode}`)
+      : getApiUrl(`/api/sessions?userId=${userId}`);
     if (!pairingCode && isDoctor) return;
     if (!userId && !isDoctor) return;
 
     setLoading(true);
-    fetch(url)
+    authFetch(url)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -65,7 +66,7 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!userId) return;
 
-    fetch(`https://neuroengage.onrender.com/api/users/${userId}`)
+    authFetch(getApiUrl(`/api/users/${userId}`))
       .then(res => res.json())
       .then(data => {
         setPatientInfo(data);
@@ -77,7 +78,7 @@ export const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!isDoctor || !userId) return;
 
-    fetch(`https://neuroengage.onrender.com/api/clinical-notes/latest?userId=${userId}`)
+    authFetch(getApiUrl(`/api/clinical-notes/latest?userId=${userId}`))
       .then(res => res.json())
       .then(data => {
         if (data && data.note) {
@@ -91,7 +92,7 @@ export const Dashboard: React.FC = () => {
     if (!isDoctor || !userId || !noteDraft.trim()) return;
     try {
       setSavingNote(true);
-      const res = await fetch('https://neuroengage.onrender.com/api/clinical-notes', {
+      const res = await authFetch(getApiUrl('/api/clinical-notes'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, note: noteDraft.trim() }),
@@ -125,9 +126,9 @@ export const Dashboard: React.FC = () => {
 
     const stress =
       s.avgStress === 'High' ? 80 :
-      s.avgStress === 'Elevated' ? 50 :
-      s.avgStress === 'Focused' ? 30 :
-      20;
+        s.avgStress === 'Elevated' ? 50 :
+          s.avgStress === 'Focused' ? 30 :
+            20;
 
     return { day, stress, focus };
   });
@@ -320,9 +321,8 @@ export const Dashboard: React.FC = () => {
                   {isDoctor ? 'Monitoring Status' : 'Your Current State'}
                 </p>
                 <h3
-                  className={`text-2xl font-bold tracking-tight ${
-                    totalSessions === 0 ? 'text-text-muted' : 'text-status-calm'
-                  }`}
+                  className={`text-2xl font-bold tracking-tight ${totalSessions === 0 ? 'text-text-muted' : 'text-status-calm'
+                    }`}
                 >
                   {totalSessions === 0 ? 'No Data' : 'Active'}
                 </h3>

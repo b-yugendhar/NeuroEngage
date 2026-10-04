@@ -2,17 +2,18 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { Activity, Brain, User, Settings, LogOut, Disc, Zap, Video } from 'lucide-react';
 import { cn } from '../utils/cn';
+import { clearAuth } from '../utils/api';
 
 export const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const role = localStorage.getItem('neuro_role') || 'doctor';
   const handleLogout = (e: React.MouseEvent) => {
     e.preventDefault();
-    localStorage.removeItem('neuro_role');
+    clearAuth();
     navigate('/');
   };
 
-  const allNavItems=[
+  const allNavItems = [
     { icon: Disc, label: 'Patient Dashboard', path: '/dashboard', roles: ['doctor', 'patient'] },
     { icon: Activity, label: 'Clinical Monitor', path: '/eeg', roles: ['doctor', 'patient'] },
     { icon: Brain, label: 'Diagnostic Reports', path: '/analysis', roles: ['doctor', 'patient'] },

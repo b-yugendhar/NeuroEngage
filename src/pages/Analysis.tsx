@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/UI';
 import { AreaChart, Area, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { History, Download, UploadCloud, ChevronDown, ChevronUp, Activity, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { authFetch, getApiUrl } from '../utils/api';
 
 interface SessionRecord {
   id: string;
@@ -50,7 +51,7 @@ export const Analysis: React.FC = () => {
 
   const handleSaveNotes = async (realId: string) => {
     try {
-      await fetch(`https://neuroengage.onrender.com/api/sessions/${realId}/notes`, {
+      await authFetch(getApiUrl(`/api/sessions/${realId}/notes`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingNotes)
@@ -64,8 +65,8 @@ export const Analysis: React.FC = () => {
 
   useEffect(() => {
     const pairingCode = localStorage.getItem('neuro_pairing_code');
-    const url = isDoctor ? `https://neuroengage.onrender.com/api/sessions?doctorCode=${pairingCode}` : `https://neuroengage.onrender.com/api/sessions?userId=${userId}`;
-    fetch(url)
+    const url = isDoctor ? getApiUrl(`/api/sessions?doctorCode=${pairingCode}`) : getApiUrl(`/api/sessions?userId=${userId}`);
+    authFetch(url)
       .then(res => res.json())
       .then(data => {
         if (data && Array.isArray(data)) {

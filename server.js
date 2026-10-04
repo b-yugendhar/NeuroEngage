@@ -6,7 +6,13 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+
 dotenv.config();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'neuro_engage_jwt_secret_key_2026';
+
 const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server, {
@@ -24,6 +30,23 @@ io.on('connection', (socket) => {
 });
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+
+// Auth Middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) {
+    return res.status(401).json({ error: 'Access denied. Token missing.' });
+  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(403).json({ error: 'Invalid or expired token.' });
+  }
+};
+
 // Mongoose Schemas
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
@@ -36,6 +59,7 @@ const userSchema = new mongoose.Schema({
   specialization: String,
   age: String
 });
+
 const sessionSchema = new mongoose.Schema({
   userId: String,
   username: String,
@@ -55,14 +79,26 @@ const sessionSchema = new mongoose.Schema({
   recommendations: String
 });
 
+const clinicalNoteSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  note: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
 const User = mongoose.model('User', userSchema);
 const Session = mongoose.model('Session', sessionSchema);
+const ClinicalNote = mongoose.model('ClinicalNote', clinicalNoteSchema);
+
 // Auth Routes
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { username, password, role, doctorCode, email, phone, specialization, age } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required.' });
+    }
     const existing = await User.findOne({ username });
     if (existing) return res.status(400).json({ error: 'Username already taken.' });
+    
     let newPairingCode = undefined;
     if (role === 'doctor') {
       newPairingCode = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -74,9 +110,35 @@ app.post('/api/auth/register', async (req, res) => {
         return res.status(400).json({ error: 'Invalid Pairing Code. No matching doctor found.' });
     }
 
-    const user = new User({ username, password, role, pairingCode: newPairingCode, doctorCode, email, phone, specialization, age });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = new User({
+      username,
+      password: hashedPassword,
+      role,
+      pairingCode: newPairingCode,
+      doctorCode,
+      email,
+      phone,
+      specialization,
+      age
+    });
     await user.save();
-    res.status(201).json({ userId: user._id, username: user.username, role: user.role, pairingCode: user.pairingCode, doctorCode: user.doctorCode, email: user.email });
+
+    const token = jwt.sign(
+      { id: user._id, username: user.username, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      token,
+      userId: user._id,
+      username: user.username,
+      role: user.role,
+      pairingCode: user.pairingCode,
+      doctorCode: user.doctorCode,
+      email: user.email
+    });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: error.message });
@@ -86,19 +148,115 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
-    const user = await User.findOne({ username, password });
-    if (!user)
-       return res.status(401).json({ error: 'Invalid username or password.' });
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required.' });
+    }
 
-    res.status(200).json({ userId: user._id, username: user.username, role: user.role, pairingCode: user.pairingCode, doctorCode: user.doctorCode });
+    const user = await User.findOne({ username });
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid username or password.' });
+    }
+
+    let isMatch = await bcrypt.compare(password, user.password);
+    
+    // Fallback check for legacy unhashed plain text password in DB
+    if (!isMatch && user.password === password) {
+      isMatch = true;
+      user.password = await bcrypt.hash(password, 10);
+      await user.save();
+    }
+
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Invalid username or password.' });
+    }
+
+    const token = jwt.sign(
+      { id: user._id, username: user.username, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      token,
+      userId: user._id,
+      username: user.username,
+      role: user.role,
+      pairingCode: user.pairingCode,
+      doctorCode: user.doctorCode
+    });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Session Routes
-app.post('/api/sessions', async (req, res) => {
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password');
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json({
+      userId: user._id,
+      username: user.username,
+      role: user.role,
+      pairingCode: user.pairingCode,
+      doctorCode: user.doctorCode,
+      email: user.email,
+      phone: user.phone,
+      specialization: user.specialization,
+      age: user.age
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// User info endpoint
+app.get('/api/users/:id', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json({
+      name: user.username,
+      username: user.username,
+      role: user.role,
+      pairingCode: user.pairingCode,
+      doctorCode: user.doctorCode,
+      email: user.email,
+      phone: user.phone,
+      specialization: user.specialization,
+      age: user.age
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Clinical Notes Routes
+app.get('/api/clinical-notes/latest', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: 'userId is required' });
+    const note = await ClinicalNote.findOne({ userId }).sort({ createdAt: -1 });
+    res.json(note || {});
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/clinical-notes', authenticateToken, async (req, res) => {
+  try {
+    const { userId, note } = req.body;
+    if (!userId || !note) return res.status(400).json({ error: 'userId and note are required.' });
+    const newNote = new ClinicalNote({ userId, note });
+    await newNote.save();
+    res.status(201).json(newNote);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Protected Session Routes
+app.post('/api/sessions', authenticateToken, async (req, res) => {
   try {
     const session = new Session(req.body);
     await session.save();
@@ -109,7 +267,7 @@ app.post('/api/sessions', async (req, res) => {
   }
 });
 
-app.get('/api/sessions', async(req, res) => {
+app.get('/api/sessions', authenticateToken, async (req, res) => {
   try {
     const { userId, doctorCode } = req.query;
     let filter = {};
@@ -131,7 +289,7 @@ app.get('/api/sessions', async(req, res) => {
   }
 });
 
-app.put('/api/sessions/:id/notes', async (req, res) => {
+app.put('/api/sessions/:id/notes', authenticateToken, async (req, res) => {
   try {
     const { doctorNotes, recommendations } = req.body;
     const session = await Session.findByIdAndUpdate(
@@ -151,13 +309,15 @@ const seedDatabase = async () => {
   try {
     const doctorExists = await User.findOne({ username: 'doctor' });
     if (!doctorExists) {
-      await User.create({ username: 'doctor', password: 'password', role: 'doctor', pairingCode: 'TEST99' });
+      const doctorPassword = await bcrypt.hash('password', 10);
+      await User.create({ username: 'doctor', password: doctorPassword, role: 'doctor', pairingCode: 'TEST99' });
       console.log('Seeded dummy Doctor account (doctor / password) with code TEST99');
     }
 
     const patientExists = await User.findOne({ username: 'patient' });
     if (!patientExists) {
-      const patient = await User.create({ username: 'patient', password: 'password', role: 'patient', doctorCode: 'TEST99' });
+      const patientPassword = await bcrypt.hash('password', 10);
+      const patient = await User.create({ username: 'patient', password: patientPassword, role: 'patient', doctorCode: 'TEST99' });
       console.log(' Seeded dummy Patient account (patient / password)');
 
       const generateWaves = (seed) => {

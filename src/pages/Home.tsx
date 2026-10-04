@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { setAuthToken, getApiUrl } from "../utils/api";
 import {
   BrainCircuit,
   Loader2,
@@ -342,7 +343,7 @@ export const Home: React.FC = () => {
     setLoading(true);
     setError("");
 
-    const endpoint = isRegistering ? "https://neuroengage.onrender.com/api/auth/register" : "https://neuroengage.onrender.com/api/auth/login";
+    const endpoint = isRegistering ? getApiUrl("/api/auth/register") : getApiUrl("/api/auth/login");
     const payload = isRegistering
       ? {
         username,
@@ -366,6 +367,9 @@ export const Home: React.FC = () => {
 
       if (!res.ok) throw new Error(data.error || "Authentication failed");
 
+      if (data.token) {
+        setAuthToken(data.token);
+      }
       localStorage.setItem("neuro_user", data.userId);
       localStorage.setItem("neuro_username", data.username);
       localStorage.setItem("neuro_role", data.role);

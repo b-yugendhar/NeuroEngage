@@ -7,19 +7,14 @@ import variables as v
 def load_dataset(data_type="ica_filtered", test_type="Arithmetic"):
     '''
     Loads data from the SAM 40 Dataset.
-    
     Args:
         data_type (string): The data type to load. Defaults to "ica_filtered".
         test_type (string): The test type to load. Defaults to "Arithmetic".
-    
     Returns:
         ndarray: The specified dataset.
-
     '''
     assert (test_type in v.TEST_TYPES)
-
     assert (data_type in v.DATA_TYPES)
-
     if data_type == "ica_filtered" and test_type != "Arithmetic":
         print("Data of type", data_type, "does not have test type", test_type)
         return 0
@@ -51,7 +46,6 @@ def load_dataset(data_type="ica_filtered", test_type="Arithmetic"):
 def load_labels():
     '''
     Loads labels from the dataset and transforms the label values to binary values.
-
     Returns:
         ndarray: The labels.
     '''
@@ -61,8 +55,6 @@ def load_labels():
     labels = labels.astype("int")
     labels = labels > 5
     return labels
-
-
 def format_labels(labels, test_type="Arithmetic", epochs=1):
     '''
     Filter the labels and repeat for the specified amount of epochs.

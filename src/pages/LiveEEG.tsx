@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent, Button } from '../components/
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity, Target, Brain, Radio, CheckCircle2, Play, ArrowRight, BatteryMedium, BrainCircuit, Monitor, Loader, Signal, AlertCircle, Wifi } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { authFetch, getApiUrl } from '../utils/api';
 
 interface BluetoothNavigator extends Navigator {
   bluetooth: {
@@ -89,20 +90,20 @@ const QuizSidebar = ({ selectedTest, quizIndex, setQuizIndex, onSelectTest }: { 
   if (!selectedTest) {
     return (
       <Card className="h-full border-border-subtle bg-white flex flex-col p-6 min-h-[400px]">
-         <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wider mb-6">Select Cognitive Battery</h3>
-         <div className="flex flex-col gap-3 overflow-y-auto pr-2 pb-2">
-           {Object.keys(COGNITIVE_TESTS).map((testName) => (
-             <Button 
-               key={testName} 
-               variant="outline" 
-               className="border-gray-300 text-black hover:border-black font-medium justify-start" 
-               style={{ color: '#000000' }} 
-               onClick={() => onSelectTest(testName)}
-             >
-               {testName} (10 Qs)
-             </Button>
-           ))}
-         </div>
+        <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wider mb-6">Select Cognitive Battery</h3>
+        <div className="flex flex-col gap-3 overflow-y-auto pr-2 pb-2">
+          {Object.keys(COGNITIVE_TESTS).map((testName) => (
+            <Button
+              key={testName}
+              variant="outline"
+              className="border-gray-300 text-black hover:border-black font-medium justify-start"
+              style={{ color: '#000000' }}
+              onClick={() => onSelectTest(testName)}
+            >
+              {testName} (10 Qs)
+            </Button>
+          ))}
+        </div>
       </Card>
     );
   }
@@ -129,14 +130,14 @@ const QuizSidebar = ({ selectedTest, quizIndex, setQuizIndex, onSelectTest }: { 
         <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">{selectedTest}</h3>
         <span className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600 font-medium">Q {quizIndex + 1} / {activeQuizArray.length}</span>
       </div>
-      
+
       <p className="text-lg font-semibold text-black leading-relaxed mb-8">{q.q}</p>
-      
+
       <div className="flex flex-col gap-3 mt-auto">
         {q.options.map((opt, i) => (
-          <Button 
-            key={i} 
-            variant="outline" 
+          <Button
+            key={i}
+            variant="outline"
             className="justify-start text-left h-auto py-3 px-4 border-gray-300 font-medium hover:border-black hover:bg-gray-100 transition-all"
             style={{ color: '#000000' }}
             onClick={() => setQuizIndex(quizIndex + 1)}
@@ -150,11 +151,11 @@ const QuizSidebar = ({ selectedTest, quizIndex, setQuizIndex, onSelectTest }: { 
 };
 
 // Minimal distinct colors
-const C_ALPHA = '#a1a1aa'; 
-const C_BETA = '#fca5a5';  
-const C_GAMMA = '#93c5fd'; 
-const C_FOCUS = '#ffffff'; 
-const C_ATTENTION = '#52525b'; 
+const C_ALPHA = '#a1a1aa';
+const C_BETA = '#fca5a5';
+const C_GAMMA = '#93c5fd';
+const C_FOCUS = '#ffffff';
+const C_ATTENTION = '#52525b';
 
 const generateMockData = (points = 30) => {
   return Array.from({ length: points }, (_, i) => {
@@ -178,10 +179,10 @@ export const LiveEEG: React.FC = () => {
   const [sessionState, setSessionState] = useState<SessionState>('IDLE');
   const [quizIndex, setQuizIndex] = useState(0);
   const [selectedTest, setSelectedTest] = useState<string | null>(null);
-  
+
   // Hardware Check Status
   const [hwStatus, setHwStatus] = useState<'waiting' | 'connecting' | 'connected'>('waiting');
-  
+
   // Questionnaire State
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
@@ -225,7 +226,7 @@ export const LiveEEG: React.FC = () => {
         acceptAllDevices: true,
         optionalServices: ['battery_service', 'device_information']
       }) as any;
-      
+
       console.log('Connected to bluetooth device:', device.name);
       setConnectionType('bluetooth');
       setDeviceName(device.name || 'Bluetooth Headset');
@@ -251,7 +252,7 @@ export const LiveEEG: React.FC = () => {
     setErrorMsg(null);
     try {
       const socket = new WebSocket(targetUrl);
-      
+
       const timeout = setTimeout(() => {
         if (socket.readyState !== WebSocket.OPEN) {
           socket.close();
@@ -277,7 +278,7 @@ export const LiveEEG: React.FC = () => {
         setErrorMsg(`Failed to connect to ${targetUrl}. Connection refused.`);
         setIsConnecting(false);
       };
-      
+
       socket.onclose = () => {
         console.log('WebSocket connection closed.');
         setActiveSocket(null);
@@ -343,7 +344,7 @@ export const LiveEEG: React.FC = () => {
             setEegData(current => {
               const newData = [...current.slice(1)];
               const lastTime = newData.length > 0 ? newData[newData.length - 1].time : 0;
-              
+
               const alpha = packet.alpha;
               const beta = packet.beta;
               const gamma = packet.gamma || Math.random() * 20 + 25;
@@ -388,7 +389,7 @@ export const LiveEEG: React.FC = () => {
         setEegData(current => {
           const newData = [...current.slice(1)];
           const lastTime = newData.length > 0 ? newData[newData.length - 1].time : 0;
-          
+
           const alpha = Math.random() * 5 + 8;     // 8-13 Hz
           const beta = Math.random() * 12 + 13;    // 13-25 Hz
           const gamma = Math.random() * 20 + 25;   // 25-45 Hz
@@ -397,7 +398,7 @@ export const LiveEEG: React.FC = () => {
           const gammaNorm = (gamma - 25) / 20;
           const focus = Math.min(100, Math.max(0, (alphaNorm * 60) + ((1 - betaNorm) * 40) + (Math.random() * 10 - 5)));
           const attention = Math.min(100, Math.max(0, (gammaNorm * 70) + (alphaNorm * 30) + (Math.random() * 10 - 5)));
-          
+
           statsRef.current.totalFocus += focus;
           statsRef.current.totalBeta += beta;
           statsRef.current.totalAttention += attention;
@@ -461,7 +462,7 @@ export const LiveEEG: React.FC = () => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mb-10">
-          
+
           {/* Web Bluetooth Card */}
           <Card className="flex flex-col justify-between p-6 border-border-subtle bg-white relative overflow-hidden">
             <div>
@@ -478,8 +479,8 @@ export const LiveEEG: React.FC = () => {
                 Pair directly with local Bluetooth Low Energy headsets (like Muse 2/S) using the browser's native device picker.
               </p>
             </div>
-            
-            <Button 
+
+            <Button
               disabled={isConnecting}
               onClick={handleConnectBluetooth}
               className="w-full h-10 transition-all font-medium text-xs border-indigo-500/30 hover:border-indigo-500"
@@ -508,10 +509,10 @@ export const LiveEEG: React.FC = () => {
               <p className="text-xs text-text-secondary leading-relaxed mb-4">
                 Stream live metrics from external hardware servers or LSL streaming scripts over local network.
               </p>
-              
+
               <div className="flex gap-2 mb-6">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={wsUrl}
                   onChange={(e) => setWsUrl(e.target.value)}
                   placeholder="ws://localhost:8080"
@@ -520,7 +521,7 @@ export const LiveEEG: React.FC = () => {
               </div>
             </div>
 
-            <Button 
+            <Button
               disabled={isConnecting}
               onClick={() => handleConnectWebSocket(wsUrl)}
               className="w-full h-10 transition-all font-medium text-xs border-blue-500/30 hover:border-blue-500"
@@ -552,14 +553,14 @@ export const LiveEEG: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Button 
+              <Button
                 onClick={() => handleConnectVirtual('Muse 2')}
                 className="w-full h-9 justify-start text-xs font-semibold px-4 border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800"
                 variant="outline"
               >
                 Pair Muse 2 (Virtual)
               </Button>
-              <Button 
+              <Button
                 onClick={() => handleConnectVirtual('OpenBCI Cyton')}
                 className="w-full h-9 justify-start text-xs font-semibold px-4 border-zinc-800 bg-zinc-900 text-zinc-300 hover:text-white hover:bg-zinc-800"
                 variant="outline"
@@ -586,7 +587,7 @@ export const LiveEEG: React.FC = () => {
               </p>
             </div>
 
-            <Button 
+            <Button
               onClick={() => {
                 setConnectionType('demo');
                 setDeviceName('Demo Mode');
@@ -605,7 +606,7 @@ export const LiveEEG: React.FC = () => {
   }
 
   const activeStyle = {
-    backgroundColor: '#86efac', 
+    backgroundColor: '#86efac',
     borderColor: '#86efac',
     color: '#000000',
     boxShadow: '0 0 15px rgba(134,239,172,0.3)',
@@ -628,7 +629,7 @@ export const LiveEEG: React.FC = () => {
                 <p className="text-text-primary font-semibold mb-3">1. How many hours of sleep did you get last night?</p>
                 <div className="grid grid-cols-3 gap-3">
                   {['< 5 hours', '5-7 hours', '8+ hours'].map(opt => (
-                    <button 
+                    <button
                       key={opt}
                       onClick={() => handleAnswer('sleep', opt)}
                       className={`py-2 px-3 border rounded text-sm transition-all ${answers['sleep'] !== opt ? 'border-border-subtle text-text-secondary hover:border-border-highlight' : ''}`}
@@ -645,7 +646,7 @@ export const LiveEEG: React.FC = () => {
                 <p className="text-white font-medium mb-3">2. What is your current perceived stress level?</p>
                 <div className="grid grid-cols-3 gap-3">
                   {['Low / Relaxed', 'Moderate', 'High / Anxious'].map(opt => (
-                    <button 
+                    <button
                       key={opt}
                       onClick={() => handleAnswer('stress', opt)}
                       className={`py-2 px-3 border rounded text-sm transition-all ${answers['stress'] !== opt ? 'border-border-subtle text-text-secondary hover:border-border-highlight' : ''}`}
@@ -662,7 +663,7 @@ export const LiveEEG: React.FC = () => {
                 <p className="text-white font-medium mb-3">3. Have you consumed caffeine in the last 2 hours?</p>
                 <div className="grid grid-cols-2 gap-3">
                   {['Yes', 'No'].map(opt => (
-                    <button 
+                    <button
                       key={opt}
                       onClick={() => handleAnswer('caffeine', opt)}
                       className={`py-2 px-3 border rounded text-sm transition-all ${answers['caffeine'] !== opt ? 'border-border-subtle text-text-secondary hover:border-border-highlight' : ''}`}
@@ -679,7 +680,7 @@ export const LiveEEG: React.FC = () => {
                 <p className="text-white font-medium mb-3">4. What primary task will you be performing during this session?</p>
                 <div className="grid grid-cols-2 gap-3">
                   {['Studying', 'Problem Solving', 'Reading / Relaxing', 'Take a Cognitive Quiz'].map(opt => (
-                    <button 
+                    <button
                       key={opt}
                       onClick={() => handleAnswer('task', opt)}
                       className={`py-2 px-3 border rounded text-sm transition-all ${answers['task'] !== opt ? 'border-border-subtle text-text-secondary hover:border-border-highlight' : ''}`}
@@ -692,13 +693,13 @@ export const LiveEEG: React.FC = () => {
               </div>
 
               <div className="pt-4 mt-2 border-t border-border-subtle flex justify-end">
-                <Button 
-                  disabled={!isQuestionnaireComplete} 
+                <Button
+                  disabled={!isQuestionnaireComplete}
                   onClick={() => setSessionState(connectionType === 'demo' ? 'ACTIVE' : 'HARDWARE_CHECK')}
                   className="px-6 h-10 transition-all duration-300 hover:scale-[1.03]"
-                  style={{ 
-                    backgroundColor: isQuestionnaireComplete ? '#ffffff' : '#27272a', 
-                    color: isQuestionnaireComplete ? '#000000' : '#a1a1aa', 
+                  style={{
+                    backgroundColor: isQuestionnaireComplete ? '#ffffff' : '#27272a',
+                    color: isQuestionnaireComplete ? '#000000' : '#a1a1aa',
                     boxShadow: isQuestionnaireComplete ? '0 0 25px rgba(255,255,255,0.25)' : 'none',
                     border: 'none'
                   }}
@@ -733,24 +734,21 @@ export const LiveEEG: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center w-full mb-10 text-left">
-          
+
           {/* Headset Ring Visual */}
           <div className="relative w-56 h-56 flex items-center justify-center mx-auto">
             {/* Outer rotating dash ring */}
-            <div className={`absolute inset-0 rounded-full border border-dashed transition-colors duration-1000 ${
-              hwStatus === 'connected' ? 'border-status-calm' : 'border-indigo-500/30 animate-[spin_6s_linear_infinite]'
-            }`}></div>
-            
-            {/* Inner pulsing solid ring */}
-            <div className={`absolute inset-6 rounded-full border transition-all duration-1000 ${
-              hwStatus === 'waiting' ? 'border-border-subtle' :
-              hwStatus === 'connecting' ? 'border-indigo-400/50 animate-pulse' :
-              'border-status-calm shadow-[0_0_30px_rgba(134,239,172,0.15)] bg-status-calm/5'
-            }`}></div>
+            <div className={`absolute inset-0 rounded-full border border-dashed transition-colors duration-1000 ${hwStatus === 'connected' ? 'border-status-calm' : 'border-indigo-500/30 animate-[spin_6s_linear_infinite]'
+              }`}></div>
 
-            <Brain size={40} className={`transition-colors duration-700 relative z-10 ${
-              hwStatus === 'connected' ? 'text-status-calm' : 'text-zinc-500'
-            }`} />
+            {/* Inner pulsing solid ring */}
+            <div className={`absolute inset-6 rounded-full border transition-all duration-1000 ${hwStatus === 'waiting' ? 'border-border-subtle' :
+              hwStatus === 'connecting' ? 'border-indigo-400/50 animate-pulse' :
+                'border-status-calm shadow-[0_0_30px_rgba(134,239,172,0.15)] bg-status-calm/5'
+              }`}></div>
+
+            <Brain size={40} className={`transition-colors duration-700 relative z-10 ${hwStatus === 'connected' ? 'text-status-calm' : 'text-zinc-500'
+              }`} />
 
             {hwStatus === 'connected' && (
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="absolute bottom-6 right-6 bg-bg-base rounded-full shadow-lg">
@@ -771,10 +769,10 @@ export const LiveEEG: React.FC = () => {
               {Object.entries(electrodeSignals).map(([node, signal]) => {
                 const isGood = signal >= 80;
                 const isWeak = signal > 30 && signal < 80;
-                const statusColor = isGood ? 'text-status-calm bg-status-calm/10 border-status-calm/20' : 
-                                    isWeak ? 'text-amber-400 bg-amber-400/10 border-amber-400/20' : 
-                                    'text-red-400 bg-red-400/10 border-red-400/20';
-                
+                const statusColor = isGood ? 'text-status-calm bg-status-calm/10 border-status-calm/20' :
+                  isWeak ? 'text-amber-400 bg-amber-400/10 border-amber-400/20' :
+                    'text-red-400 bg-red-400/10 border-red-400/20';
+
                 return (
                   <div key={node} className="flex justify-between items-center bg-gray-50 p-2 rounded-lg border border-border-subtle">
                     <div className="flex items-center gap-2">
@@ -859,7 +857,7 @@ export const LiveEEG: React.FC = () => {
             {(() => {
               const stressStatus = sessionAvgBeta > 22 ? 'High' : sessionAvgBeta > 18 ? 'Elevated' : 'Neutral';
               const insights = [];
-              
+
               if (stressStatus === 'High') {
                 insights.push("Your cognitive load indicates High Stress. Step away for a mandatory 5-minute break and practice deep breathing to lower your beta waves.");
               } else if (stressStatus === 'Elevated') {
@@ -881,10 +879,10 @@ export const LiveEEG: React.FC = () => {
               } else if (sessionAvgAttention < 50) {
                 insights.push(`Your Attention Span dropped to ${Math.round(sessionAvgAttention)}%. A quick physical stretch or brief walk can stimulate blood flow and refresh attention.`);
               }
-              
+
               return insights.map((suggestion, idx) => (
                 <li key={idx} className="bg-white border border-border-subtle p-4 rounded-xl text-sm text-text-secondary leading-relaxed flex items-start gap-3 shadow-sm">
-                  <span className="text-[#86efac] font-bold mt-0.5">•</span> 
+                  <span className="text-[#86efac] font-bold mt-0.5">•</span>
                   {suggestion}
                 </li>
               ));
@@ -892,7 +890,7 @@ export const LiveEEG: React.FC = () => {
           </ul>
         </div>
 
-        <Button 
+        <Button
           onClick={() => {
             if (activeSocket) {
               activeSocket.close();
@@ -906,8 +904,8 @@ export const LiveEEG: React.FC = () => {
             setConnectionType('demo');
             setDeviceName('Demo Mode');
             setCalibrationProgress(0);
-          }} 
-          className="h-12 px-8 text-base transition-all duration-300 hover:scale-[1.03]" 
+          }}
+          className="h-12 px-8 text-base transition-all duration-300 hover:scale-[1.03]"
           style={{ backgroundColor: 'var(--brand-primary)', color: '#ffffff', boxShadow: '0 4px 20px rgba(79,70,229,0.3)' }}
         >
           Restart Session
@@ -938,16 +936,16 @@ export const LiveEEG: React.FC = () => {
                 ...answers,
                 battery: selectedTest
               },
-              waves: eegData 
+              waves: eegData
             };
             try {
-              await fetch('https://neuroengage.onrender.com/api/sessions', {
+              await authFetch(getApiUrl('/api/sessions'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
               });
-            } catch(e) { 
-              console.error('Failed to save session to DB:', e); 
+            } catch (e) {
+              console.error('Failed to save session to DB:', e);
             }
             if (activeSocket) {
               activeSocket.close();
@@ -970,7 +968,7 @@ export const LiveEEG: React.FC = () => {
 
       {/* Dynamic Content Area: 100% width or split 2/3s and 1/3 for Quiz */}
       <div className={answers.task === 'Take a Cognitive Quiz' ? "grid grid-cols-1 lg:grid-cols-12 gap-6" : "flex flex-col gap-6"}>
-        
+
         {/* Main Telemetry Block */}
         <div className={answers.task === 'Take a Cognitive Quiz' ? "lg:col-span-8 flex flex-col gap-6" : "w-full flex flex-col gap-6"}>
           {/* Top Metrics Row */}
@@ -1013,9 +1011,9 @@ export const LiveEEG: React.FC = () => {
                     <Activity size={14} /> Telemetry
                   </CardTitle>
                   <div className="flex items-center gap-4 text-xs text-text-muted hidden sm:flex">
-                     Alpha <div className="w-2 h-2 rounded-full" style={{backgroundColor: C_ALPHA}}></div>
-                     Beta <div className="w-2 h-2 rounded-full" style={{backgroundColor: C_BETA}}></div>
-                     Gamma <div className="w-2 h-2 rounded-full" style={{backgroundColor: C_GAMMA}}></div>
+                    Alpha <div className="w-2 h-2 rounded-full" style={{ backgroundColor: C_ALPHA }}></div>
+                    Beta <div className="w-2 h-2 rounded-full" style={{ backgroundColor: C_BETA }}></div>
+                    Gamma <div className="w-2 h-2 rounded-full" style={{ backgroundColor: C_GAMMA }}></div>
                   </div>
                 </CardHeader>
                 <CardContent className="h-64 p-4 pt-0">
@@ -1040,8 +1038,8 @@ export const LiveEEG: React.FC = () => {
                     <Target size={14} /> Attention Vectors
                   </CardTitle>
                   <div className="flex items-center gap-4 text-xs text-text-muted hidden sm:flex">
-                     Focus <div className="w-2 h-2 rounded-full" style={{backgroundColor: C_FOCUS}}></div>
-                     Attention <div className="w-2 h-2 rounded-full" style={{backgroundColor: C_ATTENTION}}></div>
+                    Focus <div className="w-2 h-2 rounded-full" style={{ backgroundColor: C_FOCUS }}></div>
+                    Attention <div className="w-2 h-2 rounded-full" style={{ backgroundColor: C_ATTENTION }}></div>
                   </div>
                 </CardHeader>
                 <CardContent className="h-64 p-4 pt-0">
@@ -1063,11 +1061,11 @@ export const LiveEEG: React.FC = () => {
         {/* Optional Active Quiz Sidebar */}
         {answers.task === 'Take a Cognitive Quiz' && (
           <div className="lg:col-span-4 sticky top-6">
-            <QuizSidebar 
+            <QuizSidebar
               selectedTest={selectedTest}
               onSelectTest={setSelectedTest}
-              quizIndex={quizIndex} 
-              setQuizIndex={setQuizIndex} 
+              quizIndex={quizIndex}
+              setQuizIndex={setQuizIndex}
             />
           </div>
         )}
