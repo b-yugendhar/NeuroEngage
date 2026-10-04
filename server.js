@@ -5,32 +5,13 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import http from 'http';
-import { Server as SocketIOServer } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
 dotenv.config();
-
 const JWT_SECRET = process.env.JWT_SECRET || 'neuro_engage_jwt_secret_key_2026';
-
 const app = express();
 const server = http.createServer(app);
-const io = new SocketIOServer(server, {
-  cors: { origin: '*' }
-});
-
-io.on('connection', (socket) => {
-  socket.on('join-room', (roomId) => {
-    socket.join(roomId);
-  });
-  socket.on('send-message', (data) => {
-    io.to(data.roomId).emit('receive-message', data);
-  });
-  socket.on('disconnect', () => {});
-});
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-
 // Auth Middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
